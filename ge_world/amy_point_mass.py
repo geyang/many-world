@@ -102,7 +102,7 @@ class PointMassEnv(mujoco_env.MujocoEnv):
 
     def step(self, a):
         if self.discrete:
-            a = self.a_dict[int(a[0])]
+            a = self.a_dict[int(a)]
         vec = self._get_delta()
         dist = np.linalg.norm(vec)
         ctrl = np.square(a).sum()
