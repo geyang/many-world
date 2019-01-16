@@ -23,7 +23,7 @@ class MujocoEnv(gym.Env):
      - Do not automatically set the observation/action space.
     """
 
-    def __init__(self, model_path, frame_skip=4, set_spaces=False, discrete=False):
+    def __init__(self, model_path, frame_skip=4, set_spaces=False):
         if model_path.startswith("/"):
             fullpath = model_path
         else:
@@ -52,10 +52,7 @@ class MujocoEnv(gym.Env):
             bounds = self.model.actuator_ctrlrange.copy()
             low = bounds[:, 0]
             high = bounds[:, 1]
-            if not discrete:
-                self.action_space = spaces.Box(low=low, high=high)
-            else:
-                self.action_space = spaces.Discrete(9)
+            self.action_space = spaces.Box(low=low, high=high)
 
             high = np.inf * np.ones(self.obs_dim)
             low = -high

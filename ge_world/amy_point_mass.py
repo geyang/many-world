@@ -78,14 +78,18 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         self.controls = Controls(k_goals=1)
         self.discrete = discrete
         if self.discrete:
+            set_spaces = False
             actions = [-1, 0, 1]
             self.a_dict = [ (a, b) for a in actions for b in actions]
+            self.action_space = spaces.Discrete(9)
+        else:
+            set_spaces = True
 
         # call super init after initializing the variables.
         import os
         xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"assets/point-mass.xml")
 
-        mujoco_env.MujocoEnv.__init__(self, xml_path, frame_skip=frame_skip, set_spaces=True, discrete=discrete)
+        mujoco_env.MujocoEnv.__init__(self, xml_path, frame_skip=frame_skip, set_spaces=set_spaces)
         # utils.EzPickle.__init__(self)
 
         # note: Experimental, hard-coded
