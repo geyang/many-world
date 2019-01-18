@@ -30,8 +30,8 @@ class Controls:
     def _goals(self):
         while True:
             # chances decrease exponentially. Better to generate by pair.
-            goals = self.rng.uniform(low=-.2, high=.2, size=(self.k, 2))
-            if (np.linalg.norm(goals, axis=-1) < .2).all():
+            goals = self.rng.uniform(low=5, high=1, size=(self.k, 2))
+            if (np.linalg.norm(goals, axis=-1) < 10).all():
                 return goals
 
     def __repr__(self):
@@ -128,7 +128,6 @@ class PointMassEnv(mujoco_env.MujocoEnv):
 
     def reset_model(self):
         # todo: double check this.
-        self.controls.sample_goal()
         qpos = self.np_random.uniform(low=-0.1, high=0.1, size=self.model.nq) + self.init_qpos
         # this sets the target body position.
         qpos[-2:] = self.controls.true_goal
