@@ -106,9 +106,12 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         vec = self._get_delta()
         dist = np.linalg.norm(vec)
         ctrl = np.square(a).sum()
-        reward = - dist - ctrl
+        # reward = - dist - ctrl
+
         self.do_simulation(a, self.frame_skip)
         ob = self._get_obs()
+        reward = 0. if np.linalg.norm(
+            ob - self.controls.true_goal.cpu().numpy()) < 0.1 else -1.
         return ob, reward, False, dict(dist=dist, success=float(dist < 0.02))
 
     def viewer_setup(self):
