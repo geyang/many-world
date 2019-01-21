@@ -79,7 +79,7 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         self.discrete = discrete
         if self.discrete:
             set_spaces = False
-            actions = [-1, 0, 1]
+            actions = [-.5, 0, .5]
             self.a_dict = [ (a, b) for a in actions for b in actions]
             self.action_space = spaces.Discrete(9)
         else:
@@ -110,8 +110,7 @@ class PointMassEnv(mujoco_env.MujocoEnv):
 
         self.do_simulation(a, self.frame_skip)
         ob = self._get_obs()
-        reward = 0. if np.linalg.norm(
-            ob - self.controls.true_goal.cpu().numpy()) < 0.1 else -1.
+        reward = 0. if np.linalg.norm(ob - self.controls.goals) < 0.02 else -1.
         return ob, reward, False, dict(dist=dist, success=float(dist < 0.02))
 
     def viewer_setup(self):
@@ -133,7 +132,9 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         # todo: double check this.
         qpos = self.np_random.uniform(low=-0.1, high=0.1, size=self.model.nq) + self.init_qpos
         # this sets the target body position.
-        qpos[-2:] = self.controls.true_goal
+        goal = np.random.uniform(-0.3, 0.3, 2)
+        self.controls.sample_goal(goal)
+        qpos[-2:] = self.controls.goals
         qvel = self.init_qvel + self.np_random.uniform(low=-.005, high=.005, size=self.model.nv)
         qvel[-2:] = 0
         self.set_state(qpos, qvel)
@@ -169,6 +170,6 @@ register(
     # entry_point="envs.point_mass:PointMassEnv",
     entry_point=PointMassEnv,
     kwargs={'discrete': True},
-    max_episode_steps=10,
+    max_episode_steps=50,
     reward_threshold=-3.75,
 )
