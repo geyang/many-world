@@ -100,7 +100,14 @@ class PointMassEnv(mujoco_env.MujocoEnv):
     def k(self):
         return self.controls.k
 
+    def get_reward(self, state, goal):
+        return 0. if np.linalg.norm(state - goal) < 0.02 else -1.
+
     def step(self, a):
+        qpos = self.sim.data.qpos
+        qvel = self.sim.data.qvel
+        qvel[:2] = 0
+        self.set_state(qpos, qvel)
         if self.discrete:
             a = self.a_dict[int(a)]
         vec = self._get_delta()
@@ -110,7 +117,7 @@ class PointMassEnv(mujoco_env.MujocoEnv):
 
         self.do_simulation(a, self.frame_skip)
         ob = self._get_obs()
-        reward = 0. if np.linalg.norm(ob - self.controls.goals) < 0.02 else -1.
+        reward = self.get_reward(ob, self.controls.goals)
         return ob, reward, False, dict(dist=dist, success=float(dist < 0.02))
 
     def viewer_setup(self):
@@ -132,8 +139,9 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         # todo: double check this.
         qpos = self.np_random.uniform(low=-0.1, high=0.1, size=self.model.nq) + self.init_qpos
         # this sets the target body position.
-        goal = np.random.uniform(-0.3, 0.3, 2)
-        self.controls.sample_goal(goal)
+        goals = np.random.uniform(-0.3, 0.3, 2)
+        # goals = np.array([0., 0.])
+        self.controls.sample_goal(goals)
         qpos[-2:] = self.controls.goals
         qvel = self.init_qvel + self.np_random.uniform(low=-.005, high=.005, size=self.model.nv)
         qvel[-2:] = 0
