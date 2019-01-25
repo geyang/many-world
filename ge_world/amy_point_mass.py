@@ -3,6 +3,7 @@ from gym import spaces
 
 from ge_world import mujoco_env
 
+
 class Controls:
     def __init__(self, k_goals, seed=None):
         """
@@ -170,9 +171,11 @@ from gym.envs import register
 
 if __name__ == "__main__":
     import gym
+
     env = gym.make('PointMassDiscrete-v0')
     frame = env.render('rgb', width=200, height=200)
     from PIL import Image
+
     im = Image.fromarray(frame)
     im.show()
 else:
@@ -185,4 +188,3 @@ else:
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
-
