@@ -1,11 +1,7 @@
 import numpy as np
 from gym import spaces
 
-from . import mujoco_env
-
-
-# from gym.envs.mujoco import mujoco_env
-
+from ge_world import mujoco_env
 
 class Controls:
     def __init__(self, k_goals, seed=None):
@@ -80,7 +76,7 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         if self.discrete:
             set_spaces = False
             actions = [-.5, 0, .5]
-            self.a_dict = [ (a, b) for a in actions for b in actions]
+            self.a_dict = [(a, b) for a in actions for b in actions]
             self.action_space = spaces.Discrete(9)
         else:
             set_spaces = True
@@ -132,7 +128,7 @@ class PointMassEnv(mujoco_env.MujocoEnv):
 
         # ortho-view
         self.viewer.cam.lookat[2] = 0
-        self.viewer.cam.distance = .67
+        self.viewer.cam.distance = .74
         self.viewer.cam.elevation = -90
 
     def reset_model(self):
@@ -172,12 +168,21 @@ class PointMassEnv(mujoco_env.MujocoEnv):
 
 from gym.envs import register
 
-# note: kwargs are not passed in to the constructor when entry_point is a function.
-register(
-    id="PointMassDiscrete-v0",
-    # entry_point="envs.point_mass:PointMassEnv",
-    entry_point=PointMassEnv,
-    kwargs={'discrete': True},
-    max_episode_steps=50,
-    reward_threshold=-3.75,
-)
+if __name__ == "__main__":
+    import gym
+    env = gym.make('PointMassDiscrete-v0')
+    frame = env.render('rgb', width=200, height=200)
+    from PIL import Image
+    im = Image.fromarray(frame)
+    im.show()
+else:
+    # note: kwargs are not passed in to the constructor when entry_point is a function.
+    register(
+        id="PointMassDiscrete-v0",
+        # entry_point="ge_world.amy_point_mass:PointMassEnv",
+        entry_point=PointMassEnv,
+        kwargs={'discrete': True},
+        max_episode_steps=50,
+        reward_threshold=-3.75,
+    )
+
