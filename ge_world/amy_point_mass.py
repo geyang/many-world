@@ -80,8 +80,8 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         if self.discrete:
             set_spaces = False
             actions = [-.5, 0, .5]
-            self.a_dict = [ (a, b) for a in actions for b in actions]
-            self.action_space = spaces.Discrete(9)
+            self.a_dict = [ (a, b) for a in actions for b in actions if not (a==0 and b==0)]
+            self.action_space = spaces.Discrete(8)
         else:
             set_spaces = True
 
@@ -95,6 +95,7 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         # note: Experimental, hard-coded
         self.observation_space = spaces.Box(low=np.array([-0.3, -0.3]),
                                             high=np.array([0.3, 0.3]))
+        self.fix_goal = False
 
     @property
     def k(self):
@@ -104,6 +105,7 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         return 0. if np.linalg.norm(state - goal) < 0.02 else -1.
 
     def step(self, a):
+        done = False
         qpos = self.sim.data.qpos
         qvel = self.sim.data.qvel
         qvel[:2] = 0
@@ -118,7 +120,9 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         self.do_simulation(a, self.frame_skip)
         ob = self._get_obs()
         reward = self.get_reward(ob, self.controls.goals)
-        return ob, reward, False, dict(dist=dist, success=float(dist < 0.02))
+        if reward == 0:
+            done = True
+        return ob, reward, done, dict(dist=dist, success=float(dist < 0.02))
 
     def viewer_setup(self):
         self.viewer.cam.trackbodyid = 0
@@ -140,7 +144,8 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         qpos = self.np_random.uniform(low=-0.1, high=0.1, size=self.model.nq) + self.init_qpos
         # this sets the target body position.
         goals = np.random.uniform(-0.3, 0.3, 2)
-        # goals = np.array([0., 0.])
+        if self.fix_goal:
+            goals = np.array([0., 0.])
         self.controls.sample_goal(goals)
         qpos[-2:] = self.controls.goals
         qvel = self.init_qvel + self.np_random.uniform(low=-.005, high=.005, size=self.model.nv)
