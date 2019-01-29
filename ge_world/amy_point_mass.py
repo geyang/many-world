@@ -59,7 +59,7 @@ class PointMassEnv(mujoco_env.MujocoEnv):
     2D Point Mass Environment. Uses torque control.
     """
 
-    def __init__(self, frame_skip=10, discrete=False):
+    def __init__(self, frame_skip=10, discrete=False, id_less=False):
         """
         The multi-task Reacher environment for our experiment.
 
@@ -77,8 +77,12 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         if self.discrete:
             set_spaces = False
             actions = [-.5, 0, .5]
-            self.a_dict = [(a, b) for a in actions for b in actions if not (a==0 and b==0)]
-            self.action_space = spaces.Discrete(8)
+            if id_less:
+                self.a_dict = [(a, b) for a in actions for b in actions if not (a==0 and b==0)]
+                self.action_space = spaces.Discrete(8)
+            else:
+                self.a_dict = [(a, b) for a in actions for b in actions]
+                self.action_space = spaces.Discrete(9)
         else:
             set_spaces = True
 
@@ -93,6 +97,7 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         self.observation_space = spaces.Box(low=np.array([-0.3, -0.3]),
                                             high=np.array([0.3, 0.3]))
         self.fix_goal = False
+        self.img_env = False
 
     @property
     def k(self):
@@ -145,10 +150,22 @@ class PointMassEnv(mujoco_env.MujocoEnv):
             goals = np.array([0., 0.])
         self.controls.sample_goal(goals)
         qpos[-2:] = self.controls.goals
+        if self.img_env:  # move goal out of frame
+            qpos[-2:] = [.3, .3]
         qvel = self.init_qvel + self.np_random.uniform(low=-.005, high=.005, size=self.model.nv)
         qvel[-2:] = 0
         self.set_state(qpos, qvel)
         return self._get_obs()
+
+    def get_goal_img(self):
+        curr_qpos = self.sim.data.qpos
+        qvel = self.sim.data.qvel
+        qpos = curr_qpos.copy()
+        qpos[:2] = self.controls.goals
+        self.set_state(qpos, qvel)
+        img = self.render('rgb')
+        self.set_state(curr_qpos, qvel)
+        return img
 
     def _get_delta(self):
         *delta, _ = self.get_body_com("goal") - self.get_body_com("object")
@@ -190,6 +207,14 @@ else:
         # entry_point="ge_world.amy_point_mass:PointMassEnv",
         entry_point=PointMassEnv,
         kwargs={'discrete': True},
+        max_episode_steps=50,
+        reward_threshold=-3.75,
+    )
+    register(
+        id="PointMassDiscreteIDLess-v0",
+        # entry_point="ge_world.amy_point_mass:PointMassEnv",
+        entry_point=PointMassEnv,
+        kwargs={'id_less': True, 'discrete': True},
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
