@@ -59,26 +59,22 @@ class PointMassEnv(mujoco_env.MujocoEnv):
     2D Point Mass Environment. Uses torque control.
     """
 
-    def __init__(self, frame_skip=10, discrete=False, id_less=False):
+    def __init__(self, frame_skip=10, discrete=False, id_less=False, done_on_goal=False):
         """
-        The multi-task Reacher environment for our experiment.
 
-        :type virtual_distractors: bool
-                                    If true, uses built-in xml definition with only 1 goal. Else use
-                                    our custom xml definition, which also limites the shoulder joint angle.
-        :param k_goals: int need to be in [2, 3, 4]
-        :param obs_mode: oneOf("_get_delta", "pos")
-                            "_get_delta" returns the distance vector between the fingertip and the goal.
-                            "pos" returns the fingertip location (x, y) and the goal side-by-side. This tend to
-                                have slightly worse performance.
+        :param frame_skip:
+        :param discrete:
+        :param id_less:
+        :param done_on_goal: False, bool. flag for setting done to True when reaching the goal
         """
         self.controls = Controls(k_goals=1)
         self.discrete = discrete
+        self.done_on_goal = done_on_goal
         if self.discrete:
             set_spaces = False
             actions = [-.5, 0, .5]
             if id_less:
-                self.a_dict = [(a, b) for a in actions for b in actions if not (a==0 and b==0)]
+                self.a_dict = [(a, b) for a in actions for b in actions if not (a == 0 and b == 0)]
                 self.action_space = spaces.Discrete(8)
             else:
                 self.a_dict = [(a, b) for a in actions for b in actions]
@@ -106,8 +102,9 @@ class PointMassEnv(mujoco_env.MujocoEnv):
     def get_reward(self, state, goal):
         return 0. if np.linalg.norm(state - goal) < 0.02 else -1.
 
+    reach_counts = 0
+
     def step(self, a):
-        done = False
         qpos = self.sim.data.qpos
         qvel = self.sim.data.qvel
         qvel[:2] = 0
@@ -116,14 +113,21 @@ class PointMassEnv(mujoco_env.MujocoEnv):
             a = self.a_dict[int(a)]
         vec = self._get_delta()
         dist = np.linalg.norm(vec)
-        ctrl = np.square(a).sum()
-        # reward = - dist - ctrl
-
         self.do_simulation(a, self.frame_skip)
+        # note: return observation *after* simulation. This is how DeepMind Lab does it.
         ob = self._get_obs()
         reward = self.get_reward(ob, self.controls.goals)
-        if reward == 0:
+        if self.reach_counts:
+            self.reach_counts = self.reach_counts + 1 if reward == 0 else 0
+        elif reward == 0:
+            self.reach_counts = 1
+
+        if self.done_on_goal and self.reach_counts > 5:
             done = True
+            self.reach_counts = 0
+        else:
+            done = False
+
         return ob, reward, done, dict(dist=dist, success=float(dist < 0.02))
 
     def viewer_setup(self):
@@ -142,7 +146,7 @@ class PointMassEnv(mujoco_env.MujocoEnv):
         self.viewer.cam.elevation = -90
 
     def reset_model(self):
-        # todo: double check this.
+        self.reach_counts = 0
         qpos = self.np_random.uniform(low=-0.1, high=0.1, size=self.model.nq) + self.init_qpos
         # this sets the target body position.
         goals = np.random.uniform(-0.3, 0.3, 2)
@@ -214,7 +218,7 @@ else:
         id="PointMassDiscreteIDLess-v0",
         # entry_point="ge_world.amy_point_mass:PointMassEnv",
         entry_point=PointMassEnv,
-        kwargs={'id_less': True, 'discrete': True},
+        kwargs={'id_less': True, 'discrete': True, 'done_on_goal': True},
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
