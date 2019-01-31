@@ -215,6 +215,14 @@ else:
         reward_threshold=-3.75,
     )
     register(
+        id="PointMassDiscreteIdLess-v0",
+        # entry_point="ge_world.amy_point_mass:PointMassEnv",
+        entry_point=PointMassEnv,
+        kwargs={'id_less': True, 'discrete': True},
+        max_episode_steps=50,
+        reward_threshold=-3.75,
+    )
+    register(
         id="PointMassDiscreteIDLess-v0",
         # entry_point="ge_world.amy_point_mass:PointMassEnv",
         entry_point=PointMassEnv,
