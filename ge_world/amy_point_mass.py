@@ -102,6 +102,9 @@ class PointMassEnv(mujoco_env.MujocoEnv):
     def get_reward(self, state, goal):
         return 0. if np.linalg.norm(state - goal) < 0.02 else -1.
 
+    def get_goal(self):
+        return self.controls.goals  # plural bc this used to be multitask
+
     reach_counts = 0
 
     def step(self, a):
