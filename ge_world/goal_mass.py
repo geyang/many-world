@@ -86,13 +86,14 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
         elif reward == 0:
             self.reach_counts = 1
 
-        if self.done_on_goal and self.reach_counts > 5:
+        if self.done_on_goal and self.reach_counts > 1:
             done = True
             self.reach_counts = 0
         else:
             done = False
 
-        return ob, reward, done, dict(dist=dist, success=float(dist < 0.02))
+        # todo: I changed this to 0.4 b/c discrete action jitters around. Remember to fix this. --Ge
+        return ob, reward, done, dict(dist=dist, success=float(dist < 0.04))
 
     def viewer_setup(self):
         self.viewer.cam.trackbodyid = 0
@@ -187,6 +188,14 @@ else:
         entry_point=GoalMassEnv,
         kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
                     obj_high=0.25, id_less=True),
+        max_episode_steps=50,
+        reward_threshold=-3.75,
+    )
+    register(
+        id="GoalMassDiscreteIdLessTerm-v0",
+        entry_point=GoalMassEnv,
+        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
+                    obj_high=0.25, id_less=True, done_on_goal=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
