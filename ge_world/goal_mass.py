@@ -44,12 +44,20 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
         # utils.EzPickle.__init__(self)
 
         # note: Experimental, hard-coded
+        self.width = 64
+        self.height = 64
         _ = dict()
         if 'x' in obs_keys:
             _['x'] = spaces.Box(low=np.array([-0.3, -0.3]), high=np.array([0.3, 0.3]))
         if 'goal' in obs_keys:
             # todo: double check for agreement with actual goal distribution
             _['goal'] = spaces.Box(low=np.array([goal_low, goal_low]), high=np.array([goal_high, goal_high]))
+        if 'img' in obs_keys:
+            _['img'] = spaces.Box(
+                low=np.zeros((3, self.width, self.height)), high=np.ones((3, self.width, self.height)))
+        if 'goal_img' in obs_keys:
+            _['goal_img'] = spaces.Box(
+                low=np.zeros((3, self.width, self.height)), high=np.ones((3, self.width, self.height)))
         self.obj_low = obj_low
         self.obj_high = obj_high
         self.goal_low = goal_low
@@ -80,7 +88,7 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
         self.do_simulation(a, self.frame_skip)
         # note: return observation *after* simulation. This is how DeepMind Lab does it.
         ob = self._get_obs()
-        reward = self.compute_reward(ob[self.achieved_key], ob[self.desired_key])
+        reward = self.compute_reward(ob['x'], ob['goal'])
         if self.reach_counts:
             self.reach_counts = self.reach_counts + 1 if reward == 0 else 0
         elif reward == 0:
@@ -114,29 +122,12 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
     def reset_model(self):
         self.reach_counts = 0
         x = self.np_random.uniform(low=self.obj_low, high=self.obj_high, size=2)
-        if self.img_env:  # move goal out of frame
-            goal = [.3, .3]
-        else:
-            goal = self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=2)
+        goal = self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=2)
         # self.controls.sample_goal(goals)
         self.sim.data.qpos[:] = np.concatenate([x, goal])
         self.sim.data.qvel[:] = 0  # no velocity
         # self.set_state(qpos, qvel)
         return self._get_obs()
-
-    # def get_goal(self):
-    #     return self.controls.goals  # plural bc this used to be multitask
-
-    def get_goal_img(self):
-        curr_qpos = self.sim.data.qpos
-        qvel = self.sim.data.qvel
-        qpos = curr_qpos.copy()
-        raise DeprecationWarning("We don't use controls anymore.")
-        self.sim.data.qpos[:2] = self.controls.goals
-        # self.set_state(qpos, qvel)
-        img = self.render('rgb')
-        self.set_state(curr_qpos, qvel)
-        return img
 
     def _get_delta(self):
         *delta, _ = self.get_body_com("goal") - self.get_body_com("object")
@@ -147,8 +138,22 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
         qpos = self.sim.data.qpos.flat.copy()
         if 'x' in self.obs_keys:
             obs['x'] = qpos[:2]
+        if 'img' in self.obs_keys:
+            goal = qpos[2:].copy()
+            qpos[2:] = [.3, .3] # move goal out of frame
+            self.set_state(qpos, self.sim.data.qvel)
+            obs['img'] = self.render('rgb', width=self.width, height=self.height).transpose(2, 0, 1) / 255
+            qpos[2:] = goal
+            self.set_state(qpos, self.sim.data.qvel)
         if 'goal' in self.obs_keys:
             obs['goal'] = qpos[2:]
+        if 'goal_img' in self.obs_keys:
+            curr_qpos = qpos.copy()
+            qpos[:2] = qpos[2:].copy()
+            qpos[2:] = [.3, .3]  # move goal out of frame
+            self.set_state(qpos, self.sim.data.qvel)
+            obs['goal_img'] = self.render('rgb', width=self.width, height=self.height).transpose(2, 0, 1) / 255
+            self.set_state(curr_qpos, self.sim.data.qvel)
         return obs
 
     # def sample_task(self, index=None):
@@ -187,6 +192,14 @@ else:
         id="GoalMassDiscreteIdLess-v0",
         entry_point=GoalMassEnv,
         kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
+                    obj_high=0.25, id_less=True),
+        max_episode_steps=50,
+        reward_threshold=-3.75,
+    )
+    register(
+        id="GoalMassDiscreteImgIdLess-v0",
+        entry_point=GoalMassEnv,
+        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
                     obj_high=0.25, id_less=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
