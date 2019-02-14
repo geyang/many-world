@@ -45,8 +45,8 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
         # utils.EzPickle.__init__(self)
 
         # note: Experimental, hard-coded
-        self.width = 32
-        self.height = 32
+        self.width = 28
+        self.height = 28
         _ = dict()
         if 'x' in obs_keys:
             _['x'] = spaces.Box(low=np.array([-0.3, -0.3]), high=np.array([0.3, 0.3]))
@@ -130,16 +130,6 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
         # self.set_state(qpos, qvel)
         return self._get_obs()
 
-    def get_xy_img(self, x, y):
-        curr_qpos = self.sim.data.qpos.flat.copy()
-        qpos = curr_qpos.copy()
-        qpos[2:] = [.3, .3]  # move goal out of frame
-        qpos[:2] = [x, y]
-        self.set_state(qpos, self.sim.data.qvel)
-        img = self.render('rgb', width=self.width, height=self.height).transpose(2, 0, 1) / 255
-        self.set_state(curr_qpos, self.sim.data.qvel)
-        return img
-
     def _get_delta(self):
         *delta, _ = self.get_body_com("goal") - self.get_body_com("object")
         return delta
@@ -148,22 +138,24 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
         obs = {}
         qpos = self.sim.data.qpos.flat.copy()
         if 'x' in self.obs_keys:
-            obs['x'] = qpos[:2]
+            obs['x'] = qpos[:2].copy()
         if 'img' in self.obs_keys:
             goal = qpos[2:].copy()
             qpos[2:] = [.3, .3] # move goal out of frame
             self.set_state(qpos, self.sim.data.qvel)
-            obs['img'] = self.render('rgb', width=self.width, height=self.height).transpose(2, 0, 1) / 255
+            obs['img'] = self.render('rgb', width=self.width, height=self.height).transpose(2, 0, 1).mean(
+                axis=0, keepdims=True) / 255
             qpos[2:] = goal
             self.set_state(qpos, self.sim.data.qvel)
         if 'goal' in self.obs_keys:
-            obs['goal'] = qpos[2:]
+            obs['goal'] = qpos[2:].copy()
         if 'goal_img' in self.obs_keys:
             curr_qpos = qpos.copy()
             qpos[:2] = qpos[2:].copy()
             qpos[2:] = [.3, .3]  # move goal out of frame
             self.set_state(qpos, self.sim.data.qvel)
-            obs['goal_img'] = self.render('rgb', width=self.width, height=self.height).transpose(2, 0, 1) / 255
+            obs['goal_img'] = self.render('rgb', width=self.width, height=self.height).transpose(2, 0, 1).mean(
+                axis=0, keepdims=True) / 255
             self.set_state(curr_qpos, self.sim.data.qvel)
         return obs
 
