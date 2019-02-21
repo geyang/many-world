@@ -4,7 +4,7 @@ from gym import spaces
 from ge_world import mujoco_env
 
 
-class GoalMassEnv(mujoco_env.MujocoEnv):
+class CMazeEnv(mujoco_env.MujocoEnv):
     """
     2D Point Mass Environment. Uses torque control.
     """
@@ -39,7 +39,7 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
 
         # call super init after initializing the variables.
         import os
-        xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"assets/point-mass.xml")
+        xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"assets/c-maze.xml")
 
         mujoco_env.MujocoEnv.__init__(self, xml_path, frame_skip=frame_skip, set_spaces=set_spaces)
         # utils.EzPickle.__init__(self)
@@ -175,7 +175,7 @@ from gym.envs import register
 if __name__ == "__main__":
     import gym
 
-    env = gym.make('GoalMassDiscrete-v0')
+    env = gym.make('CMazeDiscrete-v0')
     env.reset()
     frame = env.render('rgb', width=200, height=200)
     from os.path import basename
@@ -189,32 +189,32 @@ if __name__ == "__main__":
 else:
     # note: kwargs are not passed in to the constructor when entry_point is a function.
     register(
-        id="GoalMassDiscrete-v0",
-        entry_point=GoalMassEnv,
+        id="CMazeDiscrete-v0",
+        entry_point=CMazeEnv,
         kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
                     obj_high=0.25),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
-        id="GoalMassDiscreteIdLess-v0",
-        entry_point=GoalMassEnv,
+        id="CMazeDiscreteIdLess-v0",
+        entry_point=CMazeEnv,
         kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
                     obj_high=0.25, id_less=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
-        id="GoalMassDiscreteImgIdLess-v0",
-        entry_point=GoalMassEnv,
+        id="CMazeDiscreteImgIdLess-v0",
+        entry_point=CMazeEnv,
         kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
                     obj_high=0.25, id_less=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
-        id="GoalMassDiscreteFixGImgIdLess-v0",
-        entry_point=GoalMassEnv,
+        id="CMazeDiscreteFixGImgIdLess-v0",
+        entry_point=CMazeEnv,
         kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=-0., goal_high=0.,
                     obj_low=-0.25,
                     obj_high=0.25, id_less=True),
@@ -222,8 +222,8 @@ else:
         reward_threshold=-3.75,
     )
     register(
-        id="GoalMassDiscreteIdLessTerm-v0",
-        entry_point=GoalMassEnv,
+        id="CMazeDiscreteIdLessTerm-v0",
+        entry_point=CMazeEnv,
         kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
                     obj_high=0.25, id_less=True, done_on_goal=True),
         max_episode_steps=50,

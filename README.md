@@ -21,7 +21,25 @@ updated code when it changes.
 
 Right now all environments are continuous. As we discussed, we might want to change the action to discrete action at some point to make it easy to use Q learning.
 
-### PointMass
+### Newer Environments
+
+#### GoalMass
+
+- [ ] add all envs
+
+![goal_mass.py:GoalMassDiscrete-v0.png](./figures/goal_mass.py:GoalMassDiscrete-v0.png)
+
+#### C-Maze
+
+![./figures/c_maze.py:CMazeDiscrete-v0.png](./figures/c_maze.py:CMazeDiscrete-v0.png)
+
+This is a maze navigation environment with a wall in the middle, separating the space into two rooms.
+
+---
+
+### Older ones
+
+#### PointMass
 
 the state space it returns is 
 
@@ -29,7 +47,7 @@ the state space it returns is
 [x, y, x_dot, y_dot, goal_x, goal_y]
 ```
 
-### Inverted Pendulum
+#### Inverted Pendulum
 
 We avoid the name `Pendulum-v0` b/c there is already a gym 
 environment with the same name.
@@ -41,6 +59,6 @@ The state space it returns is
 The reward is the angular difference between the current
 angle theta, and the upright position.
 
-### CartPole
+#### CartPole
 
 - [ ] Still under construction
