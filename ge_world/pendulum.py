@@ -1,6 +1,6 @@
 import numpy as np
 from gym.envs import register
-from . import mujoco_env
+from ge_world import mujoco_env
 
 
 class PendulumEnv(mujoco_env.MujocoEnv):
@@ -78,17 +78,32 @@ class PendulumEnv(mujoco_env.MujocoEnv):
     def set_gravity(self, gravity):
         self.sim.o
 
+if __name__ == "__main__":
+    import gym
 
-register(
-    id="InvertedPendulum-v0",
-    entry_point=PendulumEnv,
-    kwargs=dict(),
-    max_episode_steps=50,
-    reward_threshold=-3.75,
-)
+    env = gym.make('InvertedPendulum-v0')
+    env.reset()
+    frame = env.render('rgb', width=200, height=200)
+    from os.path import basename
+    from ml_logger import logger
+    logger.log_image(frame, f"../figures/{basename(__file__)}:{env.spec.id}.png")
+
+    # to show thy human.
+    from PIL import Image
+    im = Image.fromarray(frame)
+    im.show()
+
+else:
+    register(
+        id="InvertedPendulum-v0",
+        entry_point=PendulumEnv,
+        kwargs=dict(),
+        max_episode_steps=50,
+        reward_threshold=-3.75,
+    )
 
 if __name__ == "__main__":
-    # scratch spae for the trigonometry calculation:
+    # scratch space for the trigonometry calculation:
     # make sure that the delta_theta is calculated correctly.
     rs = [np.pi / 2, 0, -np.pi / 2, -np.pi, np.pi, np.pi * 3 / 4]
     ds = [0, -np.pi / 2, -np.pi, np.pi / 2, np.pi / 2, np.pi / 4]
