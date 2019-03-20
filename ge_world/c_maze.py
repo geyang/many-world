@@ -4,6 +4,16 @@ from gym import spaces
 from ge_world import mujoco_env
 
 
+def good_goal(goal):
+    """
+    filter for a good goal (state) in the maze.
+
+    :param goal:
+    :return: bool, True if goal position is good
+    """
+    return not (goal[0] < 0.075 and -0.06 < goal[1] and goal[1] < 0.06)
+
+
 class CMazeEnv(mujoco_env.MujocoEnv):
     """
     2D Point Mass Environment. Uses torque control.
@@ -12,8 +22,8 @@ class CMazeEnv(mujoco_env.MujocoEnv):
     desired_key = 'goal'
 
     def __init__(self, frame_skip=10, obs_keys=(achieved_key, desired_key),
-                 obj_low=-0.25, obj_high=0.25, goal_low=-0.25, goal_high=0.25,
-                 discrete=False, id_less=False, done_on_goal=False):
+                 obj_low=-0.24, obj_high=0.24, goal_low=-0.23, goal_high=0.23,
+                 act_scale=0.5, discrete=False, id_less=False, done_on_goal=False):
         """
 
         :param frame_skip:
@@ -27,7 +37,7 @@ class CMazeEnv(mujoco_env.MujocoEnv):
 
         if self.discrete:
             set_spaces = False
-            actions = [-.5, 0, .5]
+            actions = [-act_scale, 0, act_scale]
             if id_less:
                 self.a_dict = [(a, b) for a in actions for b in actions if not (a == 0 and b == 0)]
                 self.action_space = spaces.Discrete(8)
@@ -120,10 +130,18 @@ class CMazeEnv(mujoco_env.MujocoEnv):
         self.viewer.cam.elevation = -90
         self.viewer.cam.azimuth = 90
 
+    def _get_goal(self):
+        # return self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=2)
+        while True:
+            goals = self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=(10, 2))
+            for goal in goals:
+                if good_goal(goal):
+                    return goal
+
     def reset_model(self):
         self.reach_counts = 0
         x = self.np_random.uniform(low=self.obj_low, high=self.obj_high, size=2)
-        goal = self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=2)
+        goal = self._get_goal()
         # self.controls.sample_goal(goals)
         self.sim.data.qpos[:] = np.concatenate([x, goal])
         self.sim.data.qvel[:] = 0  # no velocity
@@ -141,7 +159,7 @@ class CMazeEnv(mujoco_env.MujocoEnv):
             obs['x'] = qpos[:2].copy()
         if 'img' in self.obs_keys:
             goal = qpos[2:].copy()
-            qpos[2:] = [.3, .3] # move goal out of frame
+            qpos[2:] = [.3, .3]  # move goal out of frame
             self.set_state(qpos, self.sim.data.qvel)
             obs['img'] = self.render('rgb', width=self.width, height=self.height).transpose(2, 0, 1).mean(
                 axis=0, keepdims=True) / 255
@@ -158,7 +176,6 @@ class CMazeEnv(mujoco_env.MujocoEnv):
                 axis=0, keepdims=True) / 255
             self.set_state(curr_qpos, self.sim.data.qvel)
         return obs
-
 
     # def sample_task(self, index=None):
     #     return self.controls.sample_task(index=index)
@@ -180,10 +197,12 @@ if __name__ == "__main__":
     frame = env.render('rgb', width=200, height=200)
     from os.path import basename
     from ml_logger import logger
+
     logger.log_image(frame, f"../figures/{basename(__file__)}:{env.spec.id}.png")
 
     # to show thy human.
     from PIL import Image
+
     im = Image.fromarray(frame)
     im.show()
 else:
@@ -191,24 +210,21 @@ else:
     register(
         id="CMazeDiscrete-v0",
         entry_point=CMazeEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
-                    obj_high=0.25),
+        kwargs=dict(discrete=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
         id="CMazeDiscreteIdLess-v0",
         entry_point=CMazeEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
-                    obj_high=0.25, id_less=True),
+        kwargs=dict(discrete=True, id_less=True, act_scale=0.5),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
         id="CMazeDiscreteImgIdLess-v0",
         entry_point=CMazeEnv,
-        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
-                    obj_high=0.25, id_less=True),
+        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), id_less=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
@@ -216,16 +232,14 @@ else:
         id="CMazeDiscreteFixGImgIdLess-v0",
         entry_point=CMazeEnv,
         kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=-0., goal_high=0.,
-                    obj_low=-0.25,
-                    obj_high=0.25, id_less=True),
+                    id_less=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
         id="CMazeDiscreteIdLessTerm-v0",
         entry_point=CMazeEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
-                    obj_high=0.25, id_less=True, done_on_goal=True),
+        kwargs=dict(discrete=True, id_less=True, done_on_goal=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
