@@ -141,7 +141,7 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
             obs['x'] = qpos[:2].copy()
         if 'img' in self.obs_keys:
             goal = qpos[2:].copy()
-            qpos[2:] = [.3, .3] # move goal out of frame
+            qpos[2:] = [.3, .3]  # move goal out of frame
             self.set_state(qpos, self.sim.data.qvel)
             obs['img'] = self.render('rgb', width=self.width, height=self.height).transpose(2, 0, 1).mean(
                 axis=0, keepdims=True) / 255
@@ -158,7 +158,6 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
                 axis=0, keepdims=True) / 255
             self.set_state(curr_qpos, self.sim.data.qvel)
         return obs
-
 
     # def sample_task(self, index=None):
     #     return self.controls.sample_task(index=index)
@@ -180,10 +179,12 @@ if __name__ == "__main__":
     frame = env.render('rgb', width=200, height=200)
     from os.path import basename
     from ml_logger import logger
+
     logger.log_image(frame, f"../figures/{basename(__file__)}:{env.spec.id}.png")
 
     # to show thy human.
     from PIL import Image
+
     im = Image.fromarray(frame)
     im.show()
 else:
@@ -191,41 +192,38 @@ else:
     register(
         id="GoalMassDiscrete-v0",
         entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
-                    obj_high=0.25),
+        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
         id="GoalMassDiscreteIdLess-v0",
         entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
-                    obj_high=0.25, id_less=True),
+        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25, id_less=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
         id="GoalMassDiscreteImgIdLess-v0",
         entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
-                    obj_high=0.25, id_less=True),
+        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25, id_less=True,
+                    obs_keys=('x', 'img', 'goal', 'goal_img')),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
         id="GoalMassDiscreteFixGImgIdLess-v0",
         entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=-0., goal_high=0.,
-                    obj_low=-0.25,
-                    obj_high=0.25, id_less=True),
+        kwargs=dict(discrete=True, goal_low=-0., goal_high=0., obj_low=-0.25, obj_high=0.25, id_less=True,
+                    obs_keys=('x', 'img', 'goal', 'goal_img')),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
         id="GoalMassDiscreteIdLessTerm-v0",
         entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25,
-                    obj_high=0.25, id_less=True, done_on_goal=True),
+        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25, id_less=True,
+                    done_on_goal=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
