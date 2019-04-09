@@ -45,8 +45,8 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
         # utils.EzPickle.__init__(self)
 
         # note: Experimental, hard-coded
-        self.width = 28
-        self.height = 28
+        self.width = 64
+        self.height = 64
         _ = dict()
         if 'x' in obs_keys:
             _['x'] = spaces.Box(low=np.array([-0.3, -0.3]), high=np.array([0.3, 0.3]))
