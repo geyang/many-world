@@ -83,9 +83,9 @@ class MujocoEnv(gym.Env):
 
     # -----------------------------
 
-    def reset(self):
+    def reset(self, *args, **kwargs):
         self.sim.reset()
-        ob = self.reset_model()
+        ob = self.reset_model(*args, **kwargs)
         old_viewer = self.viewer
         for v in self._viewers.values():
             self.viewer = v

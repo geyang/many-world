@@ -7,6 +7,6 @@
     <geom conaffinity="1" name="sideW" rgba="0.15 0.15 0.15 1" size="0.01 .3 0.01" pos="-.29 0 0.01" type="box"/>
     <geom conaffinity="1" name="sideE" rgba="0.15 0.15 0.15 1" size="0.01 .3 0.01" pos=".29 0 0.01" type="box"/>
     <!--the wall in the middle-->
-    <geom conaffinity="1" friction="0 0 0" name="wall" rgba="0.15 0.15 0.15 1" size=".18 0.05 0.01" pos="-0.1 0 0.01"
+    <geom conaffinity="1" friction="0 0 0" name="wall" rgba="0.15 0.15 0.15 1" size=".05 0.05 0.01" pos="0.0 0 0.01"
           type="box"/>
 </mujoco>

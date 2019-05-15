@@ -4,7 +4,27 @@ from gym import spaces
 from ge_world import mujoco_env
 
 
-class GoalMassEnv(mujoco_env.MujocoEnv):
+def good_goal(goal):
+    """
+    filter for a good goal (state) in the maze.
+
+    :param goal:
+    :return: bool, True if goal position is good
+    """
+    return not (goal[0] > -0.13 and goal[0] < 0.13 and -0.11 < goal[1] and goal[1] < 0.11)
+
+
+def good_state(state):
+    """
+    filter for a good goal (state) in the maze.
+
+    :param state:
+    :return: bool, True if goal position is good
+    """
+    return not (state[0] > -0.09 and state[0] < 0.09 and -0.09 < state[1] and state[1] < 0.09)
+
+
+class 回MazeEnv(mujoco_env.MujocoEnv):
     """
     2D Point Mass Environment. Uses torque control.
     """
@@ -12,8 +32,8 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
     desired_key = 'goal'
 
     def __init__(self, frame_skip=10, obs_keys=(achieved_key, desired_key),
-                 obj_low=-0.25, obj_high=0.25, goal_low=-0.25, goal_high=0.25,
-                 discrete=False, id_less=False, done_on_goal=False):
+                 obj_low=-0.24, obj_high=0.24, goal_low=-0.23, goal_high=0.23,
+                 act_scale=0.5, discrete=False, id_less=False, done_on_goal=False):
         """
 
         :param frame_skip:
@@ -27,7 +47,7 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
 
         if self.discrete:
             set_spaces = False
-            actions = [-.5, 0, .5]
+            actions = [-act_scale, 0, act_scale]
             if id_less:
                 self.a_dict = [(a, b) for a in actions for b in actions if not (a == 0 and b == 0)]
                 self.action_space = spaces.Discrete(8)
@@ -39,7 +59,7 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
 
         # call super init after initializing the variables.
         import os
-        xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"assets/point-mass.xml")
+        xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"assets/回-maze.xml")
 
         mujoco_env.MujocoEnv.__init__(self, xml_path, frame_skip=frame_skip, set_spaces=set_spaces)
         # utils.EzPickle.__init__(self)
@@ -119,16 +139,30 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
         self.viewer.cam.elevation = -90
         self.viewer.cam.azimuth = 90
 
+    def _get_goal(self):
+        # return self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=2)
+        while True:
+            goals = self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=(10, 2))
+            for goal in goals:
+                if good_goal(goal):
+                    return goal
+
+    def _get_state(self):
+        while True:
+            states = self.np_random.uniform(low=self.obj_low, high=self.obj_high, size=(10, 2))
+            for state in states:
+                if good_state(state):
+                    return state
+
     def reset_model(self, x=None, goal=None):
         self.reach_counts = 0
         if x is None:
-            x = self.np_random.uniform(low=self.obj_low, high=self.obj_high, size=2)
+            x = self._get_state()
         if goal is None:
-            goal = self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=2)
-        # self.controls.sample_goal(goals)
+            goal = self._get_goal()
+
         self.sim.data.qpos[:] = np.concatenate([x, goal])
         self.sim.data.qvel[:] = 0  # no velocity
-        # self.set_state(qpos, qvel)
         return self._get_obs()
 
     def _get_delta(self):
@@ -175,7 +209,7 @@ from gym.envs import register
 if __name__ == "__main__":
     import gym
 
-    env = gym.make('GoalMassDiscrete-v0')
+    env = gym.make('回MazeDiscrete-v0')
     env.reset()
     frame = env.render('rgb', width=200, height=200)
     from os.path import basename
@@ -191,40 +225,38 @@ if __name__ == "__main__":
 else:
     # note: kwargs are not passed in to the constructor when entry_point is a function.
     register(
-        id="GoalMassDiscrete-v0",
-        entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25),
+        id="回MazeDiscrete-v0",
+        entry_point=回MazeEnv,
+        kwargs=dict(discrete=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
-        id="GoalMassDiscreteIdLess-v0",
-        entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25, id_less=True),
+        id="回MazeDiscreteIdLess-v0",
+        entry_point=回MazeEnv,
+        kwargs=dict(discrete=True, id_less=True, act_scale=0.5),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
-        id="GoalMassDiscreteImgIdLess-v0",
-        entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25, id_less=True,
-                    obs_keys=('x', 'img', 'goal', 'goal_img')),
+        id="回MazeDiscreteImgIdLess-v0",
+        entry_point=回MazeEnv,
+        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), id_less=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
-        id="GoalMassDiscreteFixGImgIdLess-v0",
-        entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0., goal_high=0., obj_low=-0.25, obj_high=0.25, id_less=True,
-                    obs_keys=('x', 'img', 'goal', 'goal_img')),
+        id="回MazeDiscreteFixGImgIdLess-v0",
+        entry_point=回MazeEnv,
+        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=-0., goal_high=0.,
+                    id_less=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
-        id="GoalMassDiscreteIdLessTerm-v0",
-        entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25, id_less=True,
-                    done_on_goal=True),
+        id="回MazeDiscreteIdLessTerm-v0",
+        entry_point=回MazeEnv,
+        kwargs=dict(discrete=True, id_less=True, done_on_goal=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )

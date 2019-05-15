@@ -11,7 +11,17 @@ def good_goal(goal):
     :param goal:
     :return: bool, True if goal position is good
     """
-    return not (goal[0] < 0.075 and -0.06 < goal[1] and goal[1] < 0.06)
+    return not (goal[0] < 0.13 and -0.11 < goal[1] and goal[1] < 0.11)
+
+
+def good_state(state):
+    """
+    filter for a good goal (state) in the maze.
+
+    :param state:
+    :return: bool, True if goal position is good
+    """
+    return not (state[0] < 0.11 and -0.09 < state[1] and state[1] < 0.09)
 
 
 class CMazeEnv(mujoco_env.MujocoEnv):
@@ -55,8 +65,8 @@ class CMazeEnv(mujoco_env.MujocoEnv):
         # utils.EzPickle.__init__(self)
 
         # note: Experimental, hard-coded
-        self.width = 28
-        self.height = 28
+        self.width = 64
+        self.height = 64
         _ = dict()
         if 'x' in obs_keys:
             _['x'] = spaces.Box(low=np.array([-0.3, -0.3]), high=np.array([0.3, 0.3]))
@@ -74,7 +84,6 @@ class CMazeEnv(mujoco_env.MujocoEnv):
         self.goal_low = goal_low
         self.goal_high = goal_high
         self.observation_space = spaces.Dict(_)
-        self.img_env = False
         self.obs_keys = obs_keys
 
     # @property
@@ -138,14 +147,22 @@ class CMazeEnv(mujoco_env.MujocoEnv):
                 if good_goal(goal):
                     return goal
 
-    def reset_model(self):
+    def _get_state(self):
+        while True:
+            states = self.np_random.uniform(low=self.obj_low, high=self.obj_high, size=(10, 2))
+            for goal in states:
+                if good_state(goal):
+                    return goal
+
+    def reset_model(self, x=None, goal=None):
         self.reach_counts = 0
-        x = self.np_random.uniform(low=self.obj_low, high=self.obj_high, size=2)
-        goal = self._get_goal()
-        # self.controls.sample_goal(goals)
+        if x is None:
+            x = self._get_state()
+        if goal is None:
+            goal = self._get_goal()
+
         self.sim.data.qpos[:] = np.concatenate([x, goal])
         self.sim.data.qvel[:] = 0  # no velocity
-        # self.set_state(qpos, qvel)
         return self._get_obs()
 
     def _get_delta(self):
