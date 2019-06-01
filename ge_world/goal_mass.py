@@ -10,9 +10,11 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
     """
     achieved_key = 'x'
     desired_key = 'goal'
+    is_good_goal = lambda *_: True
+    is_good_state = lambda *_: True
 
     def __init__(self, frame_skip=10, obs_keys=(achieved_key, desired_key),
-                 obj_low=-0.25, obj_high=0.25, goal_low=-0.25, goal_high=0.25,
+                 obj_low=-0.2, obj_high=0.2, goal_low=-0.2, goal_high=0.2,
                  discrete=False, id_less=False, done_on_goal=False):
         """
 
@@ -55,10 +57,10 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
             _['goal'] = spaces.Box(low=np.array([goal_low, goal_low]), high=np.array([goal_high, goal_high]))
         if 'img' in obs_keys:
             _['img'] = spaces.Box(
-                low=np.zeros((3, self.width, self.height)), high=np.ones((3, self.width, self.height)))
+                low=np.zeros((1, self.width, self.height)), high=np.ones((1, self.width, self.height)))
         if 'goal_img' in obs_keys:
             _['goal_img'] = spaces.Box(
-                low=np.zeros((3, self.width, self.height)), high=np.ones((3, self.width, self.height)))
+                low=np.zeros((1, self.width, self.height)), high=np.ones((1, self.width, self.height)))
         self.obj_low = obj_low
         self.obj_high = obj_high
         self.goal_low = goal_low
@@ -144,8 +146,8 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
             goal = qpos[2:].copy()
             qpos[2:] = [.3, .3]  # move goal out of frame
             self.set_state(qpos, self.sim.data.qvel)
-            obs['img'] = self.render('rgb', width=self.width, height=self.height).transpose(2, 0, 1).mean(
-                axis=0, keepdims=True) / 255
+            # todo: should use render('gray') instead.
+            obs['img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
             qpos[2:] = goal
             self.set_state(qpos, self.sim.data.qvel)
         if 'goal' in self.obs_keys:
@@ -155,8 +157,8 @@ class GoalMassEnv(mujoco_env.MujocoEnv):
             qpos[:2] = qpos[2:].copy()
             qpos[2:] = [.3, .3]  # move goal out of frame
             self.set_state(qpos, self.sim.data.qvel)
-            obs['goal_img'] = self.render('rgb', width=self.width, height=self.height).transpose(2, 0, 1).mean(
-                axis=0, keepdims=True) / 255
+            # todo: should use render('gray') instead.
+            obs['goal_img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
             self.set_state(curr_qpos, self.sim.data.qvel)
         return obs
 
@@ -193,21 +195,21 @@ else:
     register(
         id="GoalMassDiscrete-v0",
         entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25),
+        kwargs=dict(discrete=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
         id="GoalMassDiscreteIdLess-v0",
         entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25, id_less=True),
+        kwargs=dict(discrete=True, id_less=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
     register(
         id="GoalMassDiscreteImgIdLess-v0",
         entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25, id_less=True,
+        kwargs=dict(discrete=True, id_less=True,
                     obs_keys=('x', 'img', 'goal', 'goal_img')),
         max_episode_steps=50,
         reward_threshold=-3.75,
@@ -215,7 +217,7 @@ else:
     register(
         id="GoalMassDiscreteFixGImgIdLess-v0",
         entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0., goal_high=0., obj_low=-0.25, obj_high=0.25, id_less=True,
+        kwargs=dict(discrete=True, goal_low=-0., goal_high=0., id_less=True,
                     obs_keys=('x', 'img', 'goal', 'goal_img')),
         max_episode_steps=50,
         reward_threshold=-3.75,
@@ -223,8 +225,7 @@ else:
     register(
         id="GoalMassDiscreteIdLessTerm-v0",
         entry_point=GoalMassEnv,
-        kwargs=dict(discrete=True, goal_low=-0.25, goal_high=0.25, obj_low=-0.25, obj_high=0.25, id_less=True,
-                    done_on_goal=True),
+        kwargs=dict(discrete=True, id_less=True, done_on_goal=True),
         max_episode_steps=50,
         reward_threshold=-3.75,
     )
