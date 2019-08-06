@@ -30,8 +30,8 @@ class 回MazeEnv(mujoco_env.MujocoEnv):
     """
     achieved_key = 'x'
     desired_key = 'goal'
-    is_good_goal = good_goal
-    is_good_state = good_state
+    is_good_goal = lambda self, _: good_goal(_)
+    is_good_state = lambda self, _: good_state(_)
 
     def __init__(self, frame_skip=10, obs_keys=(achieved_key, desired_key),
                  obj_low=-0.24, obj_high=0.24, goal_low=-0.23, goal_high=0.23,
