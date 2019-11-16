@@ -11,7 +11,7 @@ def good_goal(goal):
     :param goal:
     :return: bool, True if goal position is good
     """
-    return not (goal[0] > -0.13 and goal[0] < 0.13 and -0.11 < goal[1] and goal[1] < 0.11)
+    return not (goal[0] > -0.11 and goal[0] < 0.11 and -0.11 < goal[1] and goal[1] < 0.11)
 
 
 def good_state(state):
