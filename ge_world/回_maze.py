@@ -250,7 +250,7 @@ else:
     register(
         id="回MazeDiscreteFixGImgIdLess-v0",
         entry_point=回MazeEnv,
-        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=-0., goal_high=0.,
+        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=0.18, goal_high=0.181,
                     id_less=True),
         max_episode_steps=50,
         reward_threshold=-3.75,

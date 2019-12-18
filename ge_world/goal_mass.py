@@ -196,36 +196,31 @@ else:
         id="GoalMassDiscrete-v0",
         entry_point=GoalMassEnv,
         kwargs=dict(discrete=True),
-        max_episode_steps=50,
-        reward_threshold=-3.75,
+        max_episode_steps=50
     )
     register(
         id="GoalMassDiscreteIdLess-v0",
         entry_point=GoalMassEnv,
         kwargs=dict(discrete=True, id_less=True),
-        max_episode_steps=50,
-        reward_threshold=-3.75,
+        max_episode_steps=50
     )
     register(
         id="GoalMassDiscreteImgIdLess-v0",
         entry_point=GoalMassEnv,
         kwargs=dict(discrete=True, id_less=True,
                     obs_keys=('x', 'img', 'goal', 'goal_img')),
-        max_episode_steps=50,
-        reward_threshold=-3.75,
+        max_episode_steps=50
     )
     register(
         id="GoalMassDiscreteFixGImgIdLess-v0",
         entry_point=GoalMassEnv,
         kwargs=dict(discrete=True, goal_low=-0., goal_high=0., id_less=True,
                     obs_keys=('x', 'img', 'goal', 'goal_img')),
-        max_episode_steps=50,
-        reward_threshold=-3.75,
+        max_episode_steps=50
     )
     register(
         id="GoalMassDiscreteIdLessTerm-v0",
         entry_point=GoalMassEnv,
         kwargs=dict(discrete=True, id_less=True, done_on_goal=True),
-        max_episode_steps=50,
-        reward_threshold=-3.75,
+        max_episode_steps=50
     )

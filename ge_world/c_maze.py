@@ -231,34 +231,29 @@ else:
         entry_point=CMazeEnv,
         kwargs=dict(discrete=True),
         max_episode_steps=50,
-        reward_threshold=-3.75,
     )
     register(
         id="CMazeDiscreteIdLess-v0",
         entry_point=CMazeEnv,
         kwargs=dict(discrete=True, id_less=True, act_scale=0.5),
         max_episode_steps=50,
-        reward_threshold=-3.75,
     )
     register(
         id="CMazeDiscreteImgIdLess-v0",
         entry_point=CMazeEnv,
         kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), id_less=True),
         max_episode_steps=50,
-        reward_threshold=-3.75,
     )
     register(
         id="CMazeDiscreteFixGImgIdLess-v0",
         entry_point=CMazeEnv,
-        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=-0., goal_high=0.,
+        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=0.18, goal_high=0.181,
                     id_less=True),
         max_episode_steps=50,
-        reward_threshold=-3.75,
     )
     register(
         id="CMazeDiscreteIdLessTerm-v0",
         entry_point=CMazeEnv,
         kwargs=dict(discrete=True, id_less=True, done_on_goal=True),
         max_episode_steps=50,
-        reward_threshold=-3.75,
     )
