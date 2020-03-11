@@ -41,6 +41,12 @@ This is a maze navigation environment with a wall in the middle, separating the 
 
 use '"a"' key to get access to the raw action.
 
+| key        | "Free" | Regular |
+| ---------- | ------ | ------- |
+| "human"    | ![](./figures/Peg2DFreeImgDiscreteIdLess-v0.png) | ![](./figures/Peg2DImgDiscreteIdLess-v0.png) |
+| "img"      | ![](./figures/Peg2DFreeImgDiscreteIdLess-v0_img.png) | ![](./figures/Peg2DImgDiscreteIdLess-v0_img.png) |
+| "goal_img" | ![](./figures/Peg2DFreeImgDiscreteIdLess-v0_goal_img.png) | ![](./figures/Peg2DImgDiscreteIdLess-v0_goal_img.png) |
+
 ---
 
 ### Older ones

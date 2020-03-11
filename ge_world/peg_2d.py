@@ -39,8 +39,9 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
     is_good_state = lambda self, _: good_state(_)
 
     def __init__(self, frame_skip=10, obs_keys=(achieved_key, desired_key),
-                 obj_low=[-np.pi / 2, -np.pi + 0.2, -np.pi + 0.2], obj_high=[np.pi / 2, np.pi - 0.2, np.pi - 0.2],
-                 goal_low=-0.11, goal_high=0.11,
+                 obj_low=[-np.pi / 2, -np.pi + 0.2, -np.pi + 0.2],
+                 obj_high=[np.pi / 2, np.pi - 0.2, np.pi - 0.2],
+                 goal_low=-0.02, goal_high=0.02,
                  act_scale=1, discrete=False, id_less=False,
                  free=False,  # whether to move the goal out of the way
                  done_on_goal=False):
@@ -119,6 +120,8 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         qpos = self.sim.data.qpos
         qvel = self.sim.data.qvel
         qvel[-1:] = 0
+        if self.free:  # sent the slot out of view
+            qpos[-1:] = 1
         self.set_state(qpos, qvel)
         if self.discrete:
             a = np.array([*self.a_dict[int(a)], self.goal])
@@ -163,8 +166,7 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         self.viewer.cam.azimuth = 90
 
     def _get_goal(self):
-        if self.free:
-            return np.array([1])
+        # return np.array([0.2])
         while True:
             goals = self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=(4, 1))
             for goal in goals:
@@ -172,7 +174,14 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
                     return goal
 
     def _get_state(self):
-        return np.array([1.25, -1.7, 1.])
+        while True:
+            states = self.np_random.uniform(low=-1.5, high=1.5, size=(4, 3))
+            _ = self.np_random.uniform(0, np.pi / 2, size=4)
+            states[:, 1] = - states[:, 0] - np.sign(states[:, 0]) * _
+            states[:, 2] = np.sign(states[:, 0]) * _ + self.np_random.uniform(0, np.pi / 4, size=4)
+            for state in states:
+                if good_state(state):
+                    return state
 
     def reset_model(self, x=None, goal=None):
         self.reach_counts = 0
@@ -180,9 +189,31 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
             x = self._get_state()
         if goal is None:
             goal = self._get_goal()
-            self.goal = goal
+        self.goal = goal
+        print(goal)
 
-        self.sim.data.qpos[:] = np.concatenate([x, goal])
+        qpos = np.zeros(4)
+        qpos[-1] = 1  # always move out of the way for goal_image
+        # qpos[-1:] = goal  # show the slot.
+
+        peg_x_y = [-0.005, goal / 10]
+
+        base = (0.03 + peg_x_y[0])
+        hypo = np.linalg.norm([base, peg_x_y[1]], ord=2)
+        print(hypo, 0.04)
+        a0 = np.arctan(peg_x_y[1] / base)
+        a1 = np.sign(self.np_random.rand() - 0.5) * np.arccos(hypo / 0.04)
+        qpos[0] = a0 + a1
+        qpos[1] = - 2 * a1
+        qpos[2] = 0 - qpos[0] - qpos[1]
+
+        self.set_state(qpos, self.sim.data.qvel)
+
+        self.goal_img = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[
+                            None, ...] / 255
+
+        # now reset.
+        self.sim.data.qpos[:] = np.concatenate([x, [1] if self.free else goal])
         self.sim.data.qvel[:] = 0  # no velocity
         return self._get_obs()
 
@@ -206,13 +237,8 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         if 'goal' in self.obs_keys:
             obs['goal'] = qpos[3:].copy()
         if 'goal_img' in self.obs_keys:
-            curr_qpos = qpos.copy()
-            qpos[:3] = qpos[2:].copy()
-            qpos[3:] = [1]  # move slot out of frame
-            self.set_state(qpos, self.sim.data.qvel)
-            # todo: should use render('gray') instead.
-            obs['goal_img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
-            self.set_state(curr_qpos, self.sim.data.qvel)
+            obs['goal_img'] = self.goal_img
+
         return obs
 
 
@@ -222,49 +248,46 @@ from gym.envs import register
 register(
     id="Peg2DImgDiscreteIdLess-v0",
     entry_point=Peg2DEnv,
-    kwargs=dict(discrete=True),
+    kwargs=dict(discrete=True, obs_keys=['x', 'goal', 'img', 'goal_img']),
     max_episode_steps=1000,
 )
 register(
     id="Peg2DFreeImgDiscreteIdLess-v0",
     entry_point=Peg2DEnv,
-    kwargs=dict(discrete=True, free=True),
+    kwargs=dict(discrete=True, free=True, obs_keys=['x', 'goal', 'img', 'goal_img']),
     max_episode_steps=1000,
 )
 if __name__ == "__main__":
     import gym
+    from ml_logger import logger
     from time import sleep
     from tqdm import trange
 
     # env = Peg2DEnv(discrete=True, id_less=False, obs_keys=["x", 'img'])
-    # env = gym.make("Peg2DImgDiscreteIdLess-v0")
-    env_id = "Peg2DFreeImgDiscreteIdLess-v0"
+    env_id = "Peg2DImgDiscreteIdLess-v0"
+    # env_id = "Peg2DFreeImgDiscreteIdLess-v0"
     env = gym.make(env_id)
 
     frames = []
 
     env.reset()
-    env.render('human', width=200, height=200)
+    # env.render('human', width=200, height=200)
 
-    # while True:
     for i in trange(100):
         act = np.random.randint(low=0, high=26)
         # act = 13
-        env.step(act)
+        obs, reward, done, info = env.step(act)
         frame = env.render('rgb', width=200, height=200)
-        sleep(0.1)
-        if np.random.random() < 0.05:
+        if i == 0:
+            logger.log_image(1 - obs['img'][0], key=f"../figures/{env_id}_img.png")
+            logger.log_image(1 - obs['goal_img'][0], key=f"../figures/{env_id}_goal_img.png")
+            logger.log_image(frame, key=f"../figures/{env_id}.png")
+
+        if np.random.random() < 0.25:
             env.reset()
-        # plt.imshow(frame)
-        # plt.show()
         frames.append(frame)
 
-    from ml_logger import logger
-
     stack = np.stack(frames)
-    logger.log_image(stack.min(0), key=f"../figures/{env_id}.png")
-
-    # im = Image.fromarray(frame)
-    # im.show()
+    logger.log_image(stack.min(0), key=f"../figures/{env_id}_spread.png")
 
     print('done rendering!')
