@@ -35,6 +35,12 @@ Right now all environments are continuous. As we discussed, we might want to cha
 
 This is a maze navigation environment with a wall in the middle, separating the space into two rooms.
 
+#### Peg Insertion (2D)
+
+![./figures/Peg2DImgDiscrete-v0.png](./figures/Peg2DFreeImgDiscreteIdLess-v0.png)
+
+use '"a"' key to get access to the raw action.
+
 ---
 
 ### Older ones
