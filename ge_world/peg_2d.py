@@ -87,7 +87,7 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         self.height = 64
         _ = dict()
         if 'x' in obs_keys:
-            _['x'] = spaces.Box(low=np.array([-0.3, -0.3]), high=np.array([0.3, 0.3]))
+            _['x'] = spaces.Box(low=np.array(obj_low), high=np.array(obj_high))
         if 'goal' in obs_keys:
             # todo: double check for agreement with actual goal distribution
             _['goal'] = spaces.Box(low=np.array([goal_low, goal_low]), high=np.array([goal_high, goal_high]))
@@ -128,26 +128,16 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         self.do_simulation(a, self.frame_skip)
         # note: return observation *after* simulation. This is how DeepMind Lab does it.
         ob = self._get_obs()
-        # reward = self.compute_reward(ob['x'], ob['goal'])
-        reward = - np.linalg.norm(a)
-        if self.reach_counts:
-            self.reach_counts = self.reach_counts + 1 if reward == 0 else 0
-        elif reward == 0:
-            self.reach_counts = 1
 
-        if self.done_on_goal and self.reach_counts > 1:
-            done = True
-            self.reach_counts = 0
-        else:
-            done = False
+        dist = np.linalg.norm(self._get_goal_state() - qpos[:-1], ord=2)
+        done = dist < 0.04
+        reward = float(done) - 1
 
         # offer raw action to agent
         if 'a' in self.obs_keys:
             ob['a'] = a
 
-        # todo: I changed this to 0.4 b/c discrete action jitters around. Remember to fix this. --Ge
-        # return ob, reward, done, dict(dist=dist, success=float(dist < 0.04))
-        return ob, reward, done, dict(success=0)  # float(dist < 0.04))
+        return ob, reward, done, dict(dist=dist, success=float(done))
 
     def viewer_setup(self):
         self.viewer.cam.trackbodyid = 0
@@ -231,10 +221,10 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         obs = {}
         qpos = self.sim.data.qpos.flat.copy()
         if 'x' in self.obs_keys:
-            obs['x'] = qpos[:3].copy()
+            obs['x'] = qpos[:3]
         if 'img' in self.obs_keys:
             goal = qpos[3:].copy()
-            qpos[3:] = [1]  # move slot out of frame
+            qpos[3:] = [1].copy()  # move slot out of frame
             self.set_state(qpos, self.sim.data.qvel)
             # todo: should use render('gray') instead.
             obs['img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
@@ -247,22 +237,6 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
 
         return obs
 
-
-from gym.envs import register
-
-# note: kwargs are not passed in to the constructor when entry_point is a function.
-register(
-    id="Peg2DImgDiscreteIdLess-v0",
-    entry_point=Peg2DEnv,
-    kwargs=dict(discrete=True, obs_keys=['x', 'goal', 'img', 'goal_img']),
-    max_episode_steps=1000,
-)
-register(
-    id="Peg2DFreeImgDiscreteIdLess-v0",
-    entry_point=Peg2DEnv,
-    kwargs=dict(discrete=True, free=True, obs_keys=['x', 'goal', 'img', 'goal_img']),
-    max_episode_steps=1000,
-)
 if __name__ == "__main__":
     import gym
     from ml_logger import logger
@@ -270,30 +244,46 @@ if __name__ == "__main__":
     from tqdm import trange
 
     # env = Peg2DEnv(discrete=True, id_less=False, obs_keys=["x", 'img'])
-    env_id = "Peg2DImgDiscreteIdLess-v0"
-    # env_id = "Peg2DFreeImgDiscreteIdLess-v0"
+    # env_id = "Peg2DImgDiscreteIdLess-v0"
+    env_id = "Peg2DFreeImgDiscreteIdLess-v0"
     env = gym.make(env_id)
 
     frames = []
 
-    env.reset()
     # env.render('human', width=200, height=200)
 
     for i in trange(100):
-        frame = env.render('rgb', width=200, height=200)
-        act = np.random.randint(low=0, high=26)
-        # act = 13
-        obs, reward, done, info = env.step(act)
-        if i == 0:
-            logger.log_image(1 - obs['img'][0], key=f"../figures/{env_id}_img.png")
-            logger.log_image(1 - obs['goal_img'][0], key=f"../figures/{env_id}_goal_img.png")
-            logger.log_image(frame, key=f"../figures/{env_id}.png")
+        env.reset()
+        for step in range(10):
+            frame = env.render('rgb', width=200, height=200)
+            act = np.random.randint(low=0, high=26)
+            # act = 13
+            obs, reward, done, info = env.step(act)
+            if i == 0:
+                logger.log_image(1 - obs['img'][0], key=f"../figures/{env_id}_img.png")
+                logger.log_image(1 - obs['goal_img'][0], key=f"../figures/{env_id}_goal_img.png")
+                logger.log_image(frame, key=f"../figures/{env_id}.png")
 
-        if np.random.random() < 0.25:
-            env.reset()
-        frames.append(frame)
+            frames.append(frame)
 
     stack = np.stack(frames)
     logger.log_image(stack.min(0), key=f"../figures/{env_id}_spread.png")
 
     print('done rendering!')
+
+else:
+    from gym.envs import register
+
+    # note: kwargs are not passed in to the constructor when entry_point is a function.
+    register(
+        id="Peg2DImgDiscreteIdLess-v0",
+        entry_point=Peg2DEnv,
+        kwargs=dict(discrete=True, obs_keys=['x', 'goal', 'img', 'goal_img']),
+        max_episode_steps=1000,
+    )
+    register(
+        id="Peg2DFreeImgDiscreteIdLess-v0",
+        entry_point=Peg2DEnv,
+        kwargs=dict(discrete=True, free=True, obs_keys=['x', 'goal', 'img', 'goal_img']),
+        max_episode_steps=1000,
+    )

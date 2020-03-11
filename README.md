@@ -37,6 +37,9 @@ This is a maze navigation environment with a wall in the middle, separating the 
 
 #### Peg Insertion (2D)
 
+We make the `"img"` and `"goal_img"` ignore the slot, so that the ConvNet can focus on the position of the sword itself. 
+
+In a future work, we can have the robot learn to disentangle these components. (shouldn't be too hard.)
 
 use `"a"` key to access the raw, continuous action.
 
