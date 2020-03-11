@@ -24,7 +24,7 @@ def good_state(state):
     return not (state[0] < 0.11 and -0.09 < state[1] and state[1] < 0.09)
 
 
-class CMazeEnv(mujoco_env.MujocoEnv):
+class CMazeCFEnv(mujoco_env.MujocoEnv):
     """
     2D Point Mass Environment. Uses torque control.
     """
@@ -171,31 +171,29 @@ class CMazeEnv(mujoco_env.MujocoEnv):
         *delta, _ = self.get_body_com("goal") - self.get_body_com("object")
         return delta
 
-    def _get_obs(self, *obs_keys):
+    def _get_obs(self):
         obs = {}
         qpos = self.sim.data.qpos.flat.copy()
-        for key in obs_keys or self.obs_keys:
-            if key == 'x':
-                obs['x'] = qpos[:2].copy()
-            if key == 'img':
-                goal = qpos[2:].copy()
-                qpos[2:] = [.3, .3]  # move goal out of frame
-                self.set_state(qpos, self.sim.data.qvel)
-                # todo: should use render('gray') instead.
-                obs['img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
-                qpos[2:] = goal
-                self.set_state(qpos, self.sim.data.qvel)
-            if key == 'goal':
-                obs['goal'] = qpos[2:].copy()
-            if key == 'goal_img':
-                curr_qpos = qpos.copy()
-                qpos[:2] = qpos[2:].copy()
-                qpos[2:] = [.3, .3]  # move goal out of frame
-                self.set_state(qpos, self.sim.data.qvel)
-                # todo: should use render('gray') instead.
-                obs['goal_img'] = self.render('grey', width=self.width, height=self.height
-                                              ).transpose(0, 1)[None, ...] / 255
-                self.set_state(curr_qpos, self.sim.data.qvel)
+        if 'x' in self.obs_keys:
+            obs['x'] = qpos[:2].copy()
+        if 'img' in self.obs_keys:
+            goal = qpos[2:].copy()
+            qpos[2:] = [.3, .3]  # move goal out of frame
+            self.set_state(qpos, self.sim.data.qvel)
+            # todo: should use render('gray') instead.
+            obs['img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
+            qpos[2:] = goal
+            self.set_state(qpos, self.sim.data.qvel)
+        if 'goal' in self.obs_keys:
+            obs['goal'] = qpos[2:].copy()
+        if 'goal_img' in self.obs_keys:
+            curr_qpos = qpos.copy()
+            qpos[:2] = qpos[2:].copy()
+            qpos[2:] = [.3, .3]  # move goal out of frame
+            self.set_state(qpos, self.sim.data.qvel)
+            # todo: should use render('gray') instead.
+            obs['goal_img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
+            self.set_state(curr_qpos, self.sim.data.qvel)
         return obs
 
     # def sample_task(self, index=None):
@@ -229,33 +227,8 @@ if __name__ == "__main__":
 else:
     # note: kwargs are not passed in to the constructor when entry_point is a function.
     register(
-        id="CMazeDiscrete-v0",
-        entry_point=CMazeEnv,
-        kwargs=dict(discrete=True),
-        max_episode_steps=1000,
-    )
-    register(
-        id="CMazeDiscreteIdLess-v0",
-        entry_point=CMazeEnv,
-        kwargs=dict(discrete=True, id_less=True, act_scale=0.5),
-        max_episode_steps=1000,
-    )
-    register(
-        id="CMazeDiscreteImgIdLess-v0",
-        entry_point=CMazeEnv,
+        id="CMazeDiscreteImgIdLessCollisionFree-v0",
+        entry_point=CMazeCFEnv,
         kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), id_less=True),
-        max_episode_steps=1000,
-    )
-    register(
-        id="CMazeDiscreteFixGImgIdLess-v0",
-        entry_point=CMazeEnv,
-        kwargs=dict(discrete=True, obs_keys=('x', 'img', 'goal', 'goal_img'), goal_low=0.18, goal_high=0.181,
-                    id_less=True),
-        max_episode_steps=1000,
-    )
-    register(
-        id="CMazeDiscreteIdLessTerm-v0",
-        entry_point=CMazeEnv,
-        kwargs=dict(discrete=True, id_less=True, done_on_goal=True),
         max_episode_steps=1000,
     )

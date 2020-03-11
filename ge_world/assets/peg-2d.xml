@@ -1,0 +1,48 @@
+<mujoco model="peg-insertion">
+    <compiler angle="radian" inertiafromgeom="true"/>
+    <default>
+        <joint armature="1" damping="1" limited="true"/>
+        <geom contype="1" friction="1 0.1 0.1" rgba="0.7 0.7 0 1"/>
+    </default>
+    <option gravity="0 0 -9.81" integrator="RK4" timestep="0.01"/>
+    <asset>
+        <texture type="skybox" builtin="gradient" rgb1="0.9 0.7 0.9" rgb2="0.94 0.97 0.97" width="2" height="2"/>
+    </asset>
+    <worldbody>
+        <include file="lighting.xml"/>
+        <include file="peg-2d-arena.xml"/>
+        <!-- Arm and Peg -->
+        <body name="arm" pos="-0.2 0 0.01">
+            <geom conaffinity="1" contype="0" fromto="0 0 -0.011 0 0 0.011" name="shoulder" rgba="0.45 0.45 0.45 1" size=".02" type="cylinder"/>
+            <geom conaffinity="1" name="link0" rgba="0.35 0.35 0.35 1" size="0.1 0.01 0.01" pos="0.1 0 0" type="box"/>
+            <joint axis="0 0 1" name="joint0" pos="0 0 0" type="hinge" limited="true" range="-1.57 1.57" damping="3"/>
+            <body name="arm2" pos="0.2 0 0.0">
+                <geom conaffinity="0" contype="0" fromto="0 0 -0.011 0 0 0.011" name="elbow" rgba="0.45 0.45 0.45 1" size=".02" type="cylinder"/>
+                <geom conaffinity="1" name="link1" rgba="0.35 0.35 0.35 1" size="0.1 0.01 0.01" pos="0.1 0 0" type="box"/>
+                <joint axis="0 0 1" name="joint1" pos="0 0 0" type="hinge" limited="true" range="-3 3" damping="3"/>
+                <body name="peg" pos="0.2 0 0.0">
+                    <geom conaffinity="0" contype="0" fromto="0 0 -0.011 0 0 0.011" name="hand" rgba="0.45 0.45 0.45 1" size=".018" type="cylinder"/>
+                    <!--<geom conaffinity="1" name="guard" rgba="0.8 0.25 0.25 1" size="0.01 0.03 0.01" pos="0.06 0 0" type="box"/>-->
+                    <!--<geom conaffinity="1" name="link2" rgba="0.8 0.25 0.25 1" size="0.1 0.01 0.01" pos="0.1 0 0" type="box"/>-->
+                    <geom conaffinity="1" name="guard" rgba="0 0.5 1 1" size="0.01 0.03 0.01" pos="0.06 0 0" type="box"/>
+                    <geom conaffinity="1" name="link2" rgba="0 0.5 1 1" size="0.1 0.01 0.01" pos="0.1 0 0" type="box"/>
+                    <joint axis="0 0 1" name="joint2" pos="0 0 0" type="hinge" limited="true" range="-2.7 2.7" damping="3"/>
+                </body>
+            </body>
+        </body>
+        <!-- Slot -->
+        <body name="slot" pos="0 0 0.01">
+            <geom contype="0" conaffinity="1" name="slot0" rgba="0.15 0.15 0.15 1" size=".06 0.26 0.01" pos="0.235  .275 0.01" type="box" friction="1 0.1 0.1"/>
+            <geom contype="0" conaffinity="1" name="slot3" rgba="0.15 0.15 0.15 1" size=".06 0.26 0.01" pos="0.235 -.275 0.01" type="box" friction="1 0.1 0.1"/>
+            <!--<joint name="slot_x" type="slide" pos="0 0 0" axis="1 0 0" range="-0.3 0.3" damping="0.5"/>-->
+            <joint name="slot_y" type="slide" pos="0 0 0" axis="0 1 0" range="-1 1" damping="1000"/>
+        </body>
+    </worldbody>
+    <actuator>
+        <motor forcelimited="true" forcerange="-1.0 1.0" gear="10.0" joint="joint0"/>
+        <motor forcelimited="true" forcerange="-1.0 1.0" gear="10.0" joint="joint1"/>
+        <motor forcelimited="true" forcerange="-1.0 1.0" gear="10.0" joint="joint2"/>
+<!--        <motor forcelimited="true" forcerange="-1.0 1.0" gear="200.0" joint="joint2"/>-->
+        <motor ctrllimited="true" ctrlrange="-20 20" gear="100.0" joint="slot_y"/>
+    </actuator>
+</mujoco>
