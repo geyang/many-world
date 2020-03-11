@@ -38,7 +38,7 @@ This is a maze navigation environment with a wall in the middle, separating the 
 #### Peg Insertion (2D)
 
 
-use '"a"' key to get access to the raw action.
+use `"a"` key to access the raw, continuous action.
 
 | key        | "Free" | Regular |
 | ---------- | ------ | ------- |

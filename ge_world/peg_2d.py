@@ -174,6 +174,9 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
                     return goal
 
     def _get_state(self):
+        if self.np_random.rand() < 0.1:
+            return self._get_goal_state(x=self.np_random.rand() * - 0.01)
+
         while True:
             states = self.np_random.uniform(low=-1.5, high=1.5, size=(4, 3))
             _ = self.np_random.uniform(0, np.pi / 2, size=4)
@@ -183,34 +186,37 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
                 if good_state(state):
                     return state
 
-    def reset_model(self, x=None, goal=None):
-        self.reach_counts = 0
-        if x is None:
-            x = self._get_state()
+    def _get_goal_state(self, x=0, goal=None):
+        qpos = np.zeros(3)
         if goal is None:
-            goal = self._get_goal()
-        self.goal = goal
-        print(goal)
+            goal = self.goal
 
-        qpos = np.zeros(4)
-        qpos[-1] = 1  # always move out of the way for goal_image
-        # qpos[-1:] = goal  # show the slot.
-
-        peg_x_y = [-0.005, goal / 10]
+        peg_x_y = [x, goal / 10]
 
         base = (0.03 + peg_x_y[0])
         hypo = np.linalg.norm([base, peg_x_y[1]], ord=2)
-        print(hypo, 0.04)
         a0 = np.arctan(peg_x_y[1] / base)
         a1 = np.sign(self.np_random.rand() - 0.5) * np.arccos(hypo / 0.04)
         qpos[0] = a0 + a1
         qpos[1] = - 2 * a1
         qpos[2] = 0 - qpos[0] - qpos[1]
+        return qpos
+
+    def reset_model(self, x=None, goal=None):
+        self.reach_counts = 0
+        if goal is None:
+            goal = self._get_goal()
+        self.goal = goal
+        if x is None:
+            x = self._get_state()
+
+        # always move out of the way for goal_image
+        qpos = np.concatenate([self._get_goal_state(), [1]])
+        # qpos[-1:] = goal  # show the slot.
 
         self.set_state(qpos, self.sim.data.qvel)
 
-        self.goal_img = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[
-                            None, ...] / 255
+        self.goal_img = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
 
         # now reset.
         self.sim.data.qpos[:] = np.concatenate([x, [1] if self.free else goal])
@@ -274,10 +280,10 @@ if __name__ == "__main__":
     # env.render('human', width=200, height=200)
 
     for i in trange(100):
+        frame = env.render('rgb', width=200, height=200)
         act = np.random.randint(low=0, high=26)
         # act = 13
         obs, reward, done, info = env.step(act)
-        frame = env.render('rgb', width=200, height=200)
         if i == 0:
             logger.log_image(1 - obs['img'][0], key=f"../figures/{env_id}_img.png")
             logger.log_image(1 - obs['goal_img'][0], key=f"../figures/{env_id}_goal_img.png")
