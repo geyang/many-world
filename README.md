@@ -37,7 +37,6 @@ This is a maze navigation environment with a wall in the middle, separating the 
 
 #### Peg Insertion (2D)
 
-![./figures/Peg2DImgDiscrete-v0.png](./figures/Peg2DFreeImgDiscreteIdLess-v0.png)
 
 use '"a"' key to get access to the raw action.
 
@@ -46,6 +45,10 @@ use '"a"' key to get access to the raw action.
 | "human"    | ![](./figures/Peg2DFreeImgDiscreteIdLess-v0.png) | ![](./figures/Peg2DImgDiscreteIdLess-v0.png) |
 | "img"      | ![](./figures/Peg2DFreeImgDiscreteIdLess-v0_img.png) | ![](./figures/Peg2DImgDiscreteIdLess-v0_img.png) |
 | "goal_img" | ![](./figures/Peg2DFreeImgDiscreteIdLess-v0_goal_img.png) | ![](./figures/Peg2DImgDiscreteIdLess-v0_goal_img.png) |
+
+The initial state is distributed as such:
+
+![./figures/Peg2DImgDiscrete-v0_spread.png](./figures/Peg2DFreeImgDiscreteIdLess-v0_spread.png)
 
 ---
 
