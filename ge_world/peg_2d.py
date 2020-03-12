@@ -42,8 +42,9 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
                  obj_low=[-np.pi / 2, -np.pi + 0.2, -np.pi + 0.2],
                  obj_high=[np.pi / 2, np.pi - 0.2, np.pi - 0.2],
                  goal_low=-0.02, goal_high=0.02,
-                 act_scale=1, discrete=False, id_less=False,
+                 act_scale=1, discrete=False,
                  free=False,  # whether to move the goal out of the way
+                 view_mode="grey",
                  done_on_goal=False):
         """
 
@@ -59,19 +60,8 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         if self.discrete:
             set_spaces = False
             actions = [-act_scale, 0, act_scale]
-            if id_less:
-                self.a_dict = [(a, b, c)
-                               for a in actions
-                               for b in actions
-                               for c in actions
-                               if not (a == 0 and b == 0 and c == 0)]
-                self.action_space = spaces.Discrete(26)
-            else:
-                self.a_dict = [(a, b, c)
-                               for a in actions
-                               for b in actions
-                               for c in actions]
-                self.action_space = spaces.Discrete(27)
+            self.a_dict = actions
+            self.action_space = [spaces.Discrete(3) for _ in range(3)]
         else:
             set_spaces = True
 
@@ -80,7 +70,6 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"assets/peg-2d.xml")
 
         mujoco_env.MujocoEnv.__init__(self, xml_path, frame_skip=frame_skip, set_spaces=set_spaces)
-        # utils.EzPickle.__init__(self)
 
         # note: Experimental, hard-coded
         self.width = 64
@@ -97,10 +86,15 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         if 'goal_img' in obs_keys:
             _['goal_img'] = spaces.Box(
                 low=np.zeros((1, self.width, self.height)), high=np.ones((1, self.width, self.height)))
+        if 'a' in obs_keys:
+            _['a'] = spaces.Box(
+                low=-act_scale * np.ones((3, self.width, self.height)),
+                high=act_scale * np.ones((3, self.width, self.height)))
         self.obj_low = obj_low
         self.obj_high = obj_high
         self.goal_low = goal_low
         self.goal_high = goal_high
+        self.view_mode = view_mode
         self.observation_space = spaces.Dict(_)
         self.obs_keys = obs_keys
         self.free = free
@@ -124,7 +118,8 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
             qpos[-1:] = 1
         self.set_state(qpos, qvel)
         if self.discrete:
-            a = np.array([*self.a_dict[int(a)], self.goal])
+            a = [self.a_dict[int(a_i)] for a_i in a]
+        a = np.array([*a, *self.goal])
         self.do_simulation(a, self.frame_skip)
         # note: return observation *after* simulation. This is how DeepMind Lab does it.
         ob = self._get_obs()
@@ -135,7 +130,7 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
 
         # offer raw action to agent
         if 'a' in self.obs_keys:
-            ob['a'] = a
+            ob['a'] = a[:-1].copy()
 
         return ob, reward, done, dict(dist=dist, success=float(done))
 
@@ -206,7 +201,10 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
 
         self.set_state(qpos, self.sim.data.qvel)
 
-        self.goal_img = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
+        img = self.render(self.view_mode, width=self.width, height=self.height)
+        if self.view_mode == "grey":
+            img = img[..., None]
+        self.goal_img = img.transpose(2, 0, 1) / 255
 
         # now reset.
         self.sim.data.qpos[:] = np.concatenate([x, [1] if self.free else goal])
@@ -226,8 +224,11 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
             goal = qpos[3:].copy()
             qpos[3:] = [1].copy()  # move slot out of frame
             self.set_state(qpos, self.sim.data.qvel)
-            # todo: should use render('gray') instead.
-            obs['img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
+
+            img = self.render(self.view_mode, width=self.width, height=self.height)
+            if self.view_mode == "grey":
+                img = img[..., None]
+            obs['img'] = img.transpose(2, 0, 1) / 255
             qpos[3:] = goal
             self.set_state(qpos, self.sim.data.qvel)
         if 'goal' in self.obs_keys:
@@ -237,6 +238,7 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
 
         return obs
 
+
 if __name__ == "__main__":
     import gym
     from ml_logger import logger
@@ -244,9 +246,11 @@ if __name__ == "__main__":
     from tqdm import trange
 
     # env = Peg2DEnv(discrete=True, id_less=False, obs_keys=["x", 'img'])
-    # env_id = "Peg2DImgDiscreteIdLess-v0"
-    env_id = "Peg2DFreeImgDiscreteIdLess-v0"
+    # env_id = "Peg2DImgDiscrete-v0"
+    env_id = "Peg2DFreeImgDiscrete-v0"
     env = gym.make(env_id)
+    seed = 100
+    env.seed(seed)
 
     frames = []
 
@@ -254,20 +258,22 @@ if __name__ == "__main__":
 
     for i in trange(100):
         env.reset()
-        for step in range(10):
+        for step in range(4):
             frame = env.render('rgb', width=200, height=200)
-            act = np.random.randint(low=0, high=26)
+            act = np.random.randint(low=0, high=2, size=3)
             # act = 13
             obs, reward, done, info = env.step(act)
             if i == 0:
-                logger.log_image(1 - obs['img'][0], key=f"../figures/{env_id}_img.png")
-                logger.log_image(1 - obs['goal_img'][0], key=f"../figures/{env_id}_goal_img.png")
+                logger.log_image(obs['img'].transpose(1, 2, 0), key=f"../figures/{env_id}_img.png")
+                logger.log_image(obs['goal_img'].transpose(1, 2, 0), key=f"../figures/{env_id}_goal_img.png")
                 logger.log_image(frame, key=f"../figures/{env_id}.png")
+            else:
+                env.unwrapped.obs_keys = ["img"]
 
             frames.append(frame)
 
     stack = np.stack(frames)
-    logger.log_image(stack.min(0), key=f"../figures/{env_id}_spread.png")
+    logger.log_image(stack.min(0), key=f"../figures/{seed}/{env_id}_spread.png")
 
     print('done rendering!')
 
@@ -276,14 +282,16 @@ else:
 
     # note: kwargs are not passed in to the constructor when entry_point is a function.
     register(
-        id="Peg2DImgDiscreteIdLess-v0",
+        id="Peg2DImgDiscrete-v0",
         entry_point=Peg2DEnv,
-        kwargs=dict(discrete=True, obs_keys=['x', 'goal', 'img', 'goal_img']),
+        kwargs=dict(discrete=True, view_mode='rgb',
+                    obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
         max_episode_steps=1000,
     )
     register(
-        id="Peg2DFreeImgDiscreteIdLess-v0",
+        id="Peg2DFreeImgDiscrete-v0",
         entry_point=Peg2DEnv,
-        kwargs=dict(discrete=True, free=True, obs_keys=['x', 'goal', 'img', 'goal_img']),
+        kwargs=dict(discrete=True, view_mode='rgb', free=True,
+                    obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
         max_episode_steps=1000,
     )

@@ -15,18 +15,19 @@
         <body name="arm" pos="-0.2 0 0.01">
             <geom conaffinity="1" contype="0" fromto="0 0 -0.011 0 0 0.011" name="shoulder" rgba="0.45 0.45 0.45 1" size=".02" type="cylinder"/>
             <geom conaffinity="1" name="link0" rgba="0.35 0.35 0.35 1" size="0.1 0.01 0.01" pos="0.1 0 0" type="box"/>
-            <joint axis="0 0 1" name="joint0" pos="0 0 0" type="hinge" limited="true" range="-1.57 1.57" damping="3"/>
+            <joint axis="0 0 1" name="joint0" pos="0 0 0" type="hinge" limited="true" range="-1.57 1.57" damping="10"/>
             <body name="arm2" pos="0.2 0 0.0">
                 <geom conaffinity="0" contype="0" fromto="0 0 -0.011 0 0 0.011" name="elbow" rgba="0.45 0.45 0.45 1" size=".02" type="cylinder"/>
                 <geom conaffinity="1" name="link1" rgba="0.35 0.35 0.35 1" size="0.1 0.01 0.01" pos="0.1 0 0" type="box"/>
-                <joint axis="0 0 1" name="joint1" pos="0 0 0" type="hinge" limited="true" range="-3 3" damping="3"/>
+                <joint axis="0 0 1" name="joint1" pos="0 0 0" type="hinge" limited="true" range="-3 3" damping="10"/>
                 <body name="peg" pos="0.2 0 0.0">
-                    <geom conaffinity="0" contype="0" fromto="0 0 -0.011 0 0 0.011" name="hand" rgba="0.45 0.45 0.45 1" size=".018" type="cylinder"/>
+                    <geom conaffinity="0" contype="0" fromto="0 0 -0.011 0 0 0.011" name="hand" rgba="0 0.45 1 1" size=".04" type="cylinder"/>
                     <!--<geom conaffinity="1" name="guard" rgba="0.8 0.25 0.25 1" size="0.01 0.03 0.01" pos="0.06 0 0" type="box"/>-->
                     <!--<geom conaffinity="1" name="link2" rgba="0.8 0.25 0.25 1" size="0.1 0.01 0.01" pos="0.1 0 0" type="box"/>-->
-                    <geom conaffinity="1" name="guard" rgba="0 0.5 1 1" size="0.01 0.03 0.01" pos="0.06 0 0" type="box"/>
-                    <geom conaffinity="1" name="link2" rgba="0 0.5 1 1" size="0.1 0.01 0.01" pos="0.1 0 0" type="box"/>
-                    <joint axis="0 0 1" name="joint2" pos="0 0 0" type="hinge" limited="true" range="-2.7 2.7" damping="3"/>
+                    <geom conaffinity="1" name="guard" rgba="0.35 0.35 0.35 1" size="0.01 0.03 0.01" pos="0.06 0 0" type="box"/>
+                    <geom conaffinity="1" name="link2" rgba="0.35 0.35 0.35 1" size="0.1 0.01 0.01" pos="0.1 0 0" type="box"/>
+                    <geom contype="0" name="fingertip" pos="0.125 0 0.01" rgba="0.9 0.3 0.3 1" size=".04" type="sphere"/>
+                    <joint axis="0 0 1" name="joint2" pos="0 0 0" type="hinge" limited="true" range="-2.7 2.7" damping="10"/>
                 </body>
             </body>
         </body>
