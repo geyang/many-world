@@ -42,9 +42,10 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
                  obj_low=[-np.pi / 2, -np.pi + 0.2, -np.pi + 0.2],
                  obj_high=[np.pi / 2, np.pi - 0.2, np.pi - 0.2],
                  goal_low=-0.02, goal_high=0.02,
-                 act_scale=1, discrete=False,
+                 act_scale=0.5, discrete=False,
                  free=False,  # whether to move the goal out of the way
                  view_mode="grey",
+                 in_slot=0.1,  # prob. peg to be initialized inside the slot
                  done_on_goal=False):
         """
 
@@ -56,6 +57,8 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         # self.controls = Controls(k_goals=1)
         self.discrete = discrete
         self.done_on_goal = done_on_goal
+
+        self.in_slot = in_slot
 
         if self.discrete:
             set_spaces = False
@@ -108,29 +111,26 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         # success = np.linalg.norm(achieved - desired, axis=-1) < 0.02
         # return (success - 1).astype(float)
 
-    reach_counts = 0
-
     def step(self, a):
         qpos = self.sim.data.qpos
         qvel = self.sim.data.qvel
-        qvel[-1:] = 0
+        qvel[:] = 0
         if self.free:  # sent the slot out of view
             qpos[-1:] = 1
         self.set_state(qpos, qvel)
         if self.discrete:
             a = [self.a_dict[int(a_i)] for a_i in a]
-        a = np.array([*a, *self.goal])
         self.do_simulation(a, self.frame_skip)
         # note: return observation *after* simulation. This is how DeepMind Lab does it.
         ob = self._get_obs()
 
-        dist = np.linalg.norm(self._get_goal_state() - qpos[:-1], ord=2)
+        dist = np.linalg.norm(self._get_goal_state() - qpos, ord=2)
         done = dist < 0.04
         reward = float(done) - 1
 
         # offer raw action to agent
         if 'a' in self.obs_keys:
-            ob['a'] = a[:-1].copy()
+            ob['a'] = a.copy()
 
         return ob, reward, done, dict(dist=dist, success=float(done))
 
@@ -151,23 +151,42 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         self.viewer.cam.azimuth = 90
 
     def _get_goal(self):
-        # return np.array([0.2])
+        return np.array([0.0])
         while True:
             goals = self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=(4, 1))
             for goal in goals:
                 if good_goal(goal):
                     return goal
 
+    def effector_pos(self, angles):
+        l = 0.02
+        x_pos = l * np.cos(angles[0]) + \
+                l * np.cos(angles[:2].sum(axis=-1)) + \
+                l * np.cos(angles.sum(axis=-1))
+        y_pos = l * np.sin(angles[0]) + \
+                l * np.sin(angles[:2].sum(axis=-1)) + \
+                l * np.sin(angles.sum(axis=-1))
+        return x_pos, y_pos
+
     def _get_state(self):
-        if self.np_random.rand() < 0.1:
+        if self.np_random.rand() < self.in_slot:
             return self._get_goal_state(x=self.np_random.rand() * - 0.01)
 
         while True:
-            states = self.np_random.uniform(low=-1.5, high=1.5, size=(4, 3))
-            _ = self.np_random.uniform(0, np.pi / 2, size=4)
-            states[:, 1] = - states[:, 0] - np.sign(states[:, 0]) * _
-            states[:, 2] = np.sign(states[:, 0]) * _ + self.np_random.uniform(0, np.pi / 4, size=4)
+            import numpy as np
+
+            states = self.np_random.uniform(
+                low=[-1.5, 0, -0.5], high=[1.5, 1.5, 0.5], size=(4, 3))
+            states[:, 1] = - np.sign(states[:, 0]) * states[:, 1] - states[:, 0]
+            states[:, 2] = states[:, 2] - states[:, :2].sum(axis=-1)
+
             for state in states:
+                finger_pos = self.effector_pos(state)
+                if not self.free:
+                    print(finger_pos[0])
+                    if 0.02 < finger_pos[0] < 0.035:
+                        return state
+                    continue
                 if good_state(state):
                     return state
 
@@ -187,18 +206,19 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         qpos[2] = 0 - qpos[0] - qpos[1]
         return qpos
 
+    def set_goal_pos(self, goal):
+        self.model.body_pos[-1, 1] = goal
+        self.sim.set_constants()
+
     def reset_model(self, x=None, goal=None):
-        self.reach_counts = 0
         if goal is None:
             goal = self._get_goal()
         self.goal = goal
         if x is None:
             x = self._get_state()
 
-        # always move out of the way for goal_image
-        qpos = np.concatenate([self._get_goal_state(), [1]])
-        # qpos[-1:] = goal  # show the slot.
-
+        qpos = self._get_goal_state()
+        self.set_goal_pos(1)
         self.set_state(qpos, self.sim.data.qvel)
 
         img = self.render(self.view_mode, width=self.width, height=self.height)
@@ -207,7 +227,8 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         self.goal_img = img.transpose(2, 0, 1) / 255
 
         # now reset.
-        self.sim.data.qpos[:] = np.concatenate([x, [1] if self.free else goal])
+        self.set_goal_pos(self.goal)
+        self.sim.data.qpos[:] = x
         self.sim.data.qvel[:] = 0  # no velocity
         return self._get_obs()
 
@@ -216,23 +237,23 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         return delta
 
     def _get_obs(self):
+        # print(self.get_body_com('fingertip'))
         obs = {}
         qpos = self.sim.data.qpos.flat.copy()
         if 'x' in self.obs_keys:
-            obs['x'] = qpos[:3]
+            obs['x'] = qpos.copy()
+        if 'goal' in self.obs_keys:
+            obs['goal'] = self.goal
         if 'img' in self.obs_keys:
-            goal = qpos[3:].copy()
-            qpos[3:] = [1].copy()  # move slot out of frame
-            self.set_state(qpos, self.sim.data.qvel)
+            self.set_goal_pos(1)
+            self.set_state(qpos.copy(), self.sim.data.qvel)
 
             img = self.render(self.view_mode, width=self.width, height=self.height)
             if self.view_mode == "grey":
                 img = img[..., None]
             obs['img'] = img.transpose(2, 0, 1) / 255
-            qpos[3:] = goal
+            self.set_goal_pos(self.goal)
             self.set_state(qpos, self.sim.data.qvel)
-        if 'goal' in self.obs_keys:
-            obs['goal'] = qpos[3:].copy()
         if 'goal_img' in self.obs_keys:
             obs['goal_img'] = self.goal_img
 
@@ -246,19 +267,28 @@ if __name__ == "__main__":
     from tqdm import trange
 
     # env = Peg2DEnv(discrete=True, id_less=False, obs_keys=["x", 'img'])
-    # env_id = "Peg2DImgDiscrete-v0"
-    env_id = "Peg2DFreeImgDiscrete-v0"
+    env_id = "Peg2D-v0"
+    # env_id = "Peg2DFreeSample-v0"
     env = gym.make(env_id)
     seed = 100
     env.seed(seed)
 
     frames = []
 
-    # env.render('human', width=200, height=200)
+    # while True:
+    #     env.reset()
+    #     for step in range(10):
+    #         act = np.array([0 if step < 5 else 2, 1, 1])
+    #         # act = 13
+    #         obs, reward, done, info = env.step(act)
+    #         env.render()
+    #         sleep(0.1)
+    #
+    # # env.render('human', width=200, height=200)
 
     for i in trange(100):
         env.reset()
-        for step in range(4):
+        for step in range(1):
             frame = env.render('rgb', width=200, height=200)
             act = np.random.randint(low=0, high=2, size=3)
             # act = 13
@@ -282,16 +312,30 @@ else:
 
     # note: kwargs are not passed in to the constructor when entry_point is a function.
     register(
-        id="Peg2DImgDiscrete-v0",
+        id="Peg2D-v0",
         entry_point=Peg2DEnv,
-        kwargs=dict(discrete=True, view_mode='rgb',
+        kwargs=dict(discrete=True, view_mode='grey', in_slot=0,
                     obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
         max_episode_steps=1000,
     )
     register(
-        id="Peg2DFreeImgDiscrete-v0",
+        id="Peg2DFreeSampleRGB-v0",
         entry_point=Peg2DEnv,
         kwargs=dict(discrete=True, view_mode='rgb', free=True,
+                    obs_keys=['x', 'goal', 'img', 'a']),
+        max_episode_steps=1000,
+    )
+    register(
+        id="Peg2DFreeSample-v0",
+        entry_point=Peg2DEnv,
+        kwargs=dict(discrete=True, view_mode='grey', free=True,
+                    obs_keys=['x', 'goal', 'img', 'a']),
+        max_episode_steps=1000,
+    )
+    register(
+        id="Peg2DFree-v0",
+        entry_point=Peg2DEnv,
+        kwargs=dict(discrete=True, view_mode='grey', free=True,
                     obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
         max_episode_steps=1000,
     )
