@@ -51,7 +51,19 @@ use `"a"` key to access the raw, continuous action.
 
 The initial state is distributed as such:
 
-![./figures/Peg2DImgDiscrete-v0_spread.png](./figures/Peg2DFreeImgDiscreteIdLess-v0_spread.png)
+![./figures/Peg2DImgDiscrete-v0_spread.png](./figures/Peg2DFree-v0_spread.png)
+
+## Peg2DFree-v0
+
+| key        | "Free" | Regular |
+| ---------- | ------ | ------- |
+| "human"    | ![](./figures/Peg2DFree-v0.png) | ![](./figures/Peg2D-v0.png) |
+| "img"      | ![](./figures/Peg2DFree-v0_img.png) | ![](./figures/Peg2D-v0_img.png) |
+| "goal_img" | ![](./figures/Peg2DFree-v0_goal_img.png) | ![](./figures/Peg2D-v0_goal_img.png) |
+
+The initial state is distributed as such:
+
+![./figures/Peg2DFree-v0_spread.png](./figures/Peg2DFree-v0_spread.png)
 
 ---
 

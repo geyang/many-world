@@ -115,8 +115,6 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         qpos = self.sim.data.qpos
         qvel = self.sim.data.qvel
         qvel[:] = 0
-        if self.free:  # sent the slot out of view
-            qpos[-1:] = 1
         self.set_state(qpos, qvel)
         if self.discrete:
             a = [self.a_dict[int(a_i)] for a_i in a]
@@ -124,7 +122,7 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         # note: return observation *after* simulation. This is how DeepMind Lab does it.
         ob = self._get_obs()
 
-        dist = np.linalg.norm(self._get_goal_state() - qpos, ord=2)
+        dist = np.linalg.norm(self.goal_state - qpos, ord=2)
         done = dist < 0.04
         reward = float(done) - 1
 
@@ -151,7 +149,6 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         self.viewer.cam.azimuth = 90
 
     def _get_goal(self):
-        return np.array([0.0])
         while True:
             goals = self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=(4, 1))
             for goal in goals:
@@ -168,39 +165,41 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
                 l * np.sin(angles.sum(axis=-1))
         return x_pos, y_pos
 
-    def _get_state(self):
+    def _get_state(self, goal=None):
         if self.np_random.rand() < self.in_slot:
-            return self._get_goal_state(x=self.np_random.rand() * - 0.01)
+            return self._get_goal_state(x=self.np_random.rand() * - 0.01, goal=goal)
 
         while True:
             import numpy as np
 
-            states = self.np_random.uniform(
-                low=[-1.5, 0, -0.5], high=[1.5, 1.5, 0.5], size=(4, 3))
+            states = self.np_random.uniform(  # info: use single polar for slot mode.
+                low=[-1.5 if self.free else 0, 0, -0.5], high=[1.5, 1.5, 0.5], size=(4, 3))
             states[:, 1] = - np.sign(states[:, 0]) * states[:, 1] - states[:, 0]
             states[:, 2] = states[:, 2] - states[:, :2].sum(axis=-1)
 
             for state in states:
                 finger_pos = self.effector_pos(state)
                 if not self.free:
-                    print(finger_pos[0])
-                    if 0.02 < finger_pos[0] < 0.035:
+                    if 0.02 <= finger_pos[0] < 0.035:
                         return state
                     continue
                 if good_state(state):
                     return state
 
-    def _get_goal_state(self, x=0, goal=None):
+    def _get_goal_state(self, goal, x=0., ):
+        # if self.goal_high:
+        #     assert goal == 0, "only zero goal position is allowed for fixed slot."
         qpos = np.zeros(3)
-        if goal is None:
-            goal = self.goal
 
         peg_x_y = [x, goal / 10]
 
         base = (0.03 + peg_x_y[0])
         hypo = np.linalg.norm([base, peg_x_y[1]], ord=2)
         a0 = np.arctan(peg_x_y[1] / base)
-        a1 = np.sign(self.np_random.rand() - 0.5) * np.arccos(hypo / 0.04)
+        if self.free:
+            a1 = np.sign(self.np_random.rand() - 0.5) * np.arccos(hypo / 0.04)
+        else:
+            a1 = np.arccos(hypo / 0.04)
         qpos[0] = a0 + a1
         qpos[1] = - 2 * a1
         qpos[2] = 0 - qpos[0] - qpos[1]
@@ -211,22 +210,38 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         self.sim.set_constants()
 
     def reset_model(self, x=None, goal=None):
-        if goal is None:
+        if self.free:
+            # assert goal is None, "can not set goal in free mode."
+            # assert not self.in_slot, "can not have in_slot probability."
             goal = self._get_goal()
-        self.goal = goal
-        if x is None:
-            x = self._get_state()
+            goal_pos = self._get_state(goal=goal)
 
-        qpos = self._get_goal_state()
+            if x is None:  # in free mode, the initial y position should be sampled differently
+                diff_goal = self._get_goal()
+                x = self._get_state(diff_goal)
+
+            # now move the slot out of the way.
+            self.goal = 1
+
+        else:
+            self.goal = goal or self._get_goal()
+            goal_pos = self._get_goal_state(x=-0.003, goal=self.goal)
+
+            if x is None:
+                x = self._get_state(self.goal)
+
+        self.goal_state = goal_pos.copy()
+
         self.set_goal_pos(1)
-        self.set_state(qpos, self.sim.data.qvel)
+        self.set_state(goal_pos, self.sim.data.qvel)
 
         img = self.render(self.view_mode, width=self.width, height=self.height)
         if self.view_mode == "grey":
             img = img[..., None]
         self.goal_img = img.transpose(2, 0, 1) / 255
 
-        # now reset.
+        # Now genrate the initial positions
+
         self.set_goal_pos(self.goal)
         self.sim.data.qpos[:] = x
         self.sim.data.qvel[:] = 0  # no velocity
@@ -237,7 +252,6 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         return delta
 
     def _get_obs(self):
-        # print(self.get_body_com('fingertip'))
         obs = {}
         qpos = self.sim.data.qpos.flat.copy()
         if 'x' in self.obs_keys:
@@ -268,7 +282,7 @@ if __name__ == "__main__":
 
     # env = Peg2DEnv(discrete=True, id_less=False, obs_keys=["x", 'img'])
     env_id = "Peg2D-v0"
-    # env_id = "Peg2DFreeSample-v0"
+    # env_id = "Peg2DFree-v0"
     env = gym.make(env_id)
     seed = 100
     env.seed(seed)
@@ -303,7 +317,7 @@ if __name__ == "__main__":
             frames.append(frame)
 
     stack = np.stack(frames)
-    logger.log_image(stack.min(0), key=f"../figures/{seed}/{env_id}_spread.png")
+    logger.log_image(stack.min(0), key=f"../figures/{env_id}_spread.png")
 
     print('done rendering!')
 
@@ -315,6 +329,14 @@ else:
         id="Peg2D-v0",
         entry_point=Peg2DEnv,
         kwargs=dict(discrete=True, view_mode='grey', in_slot=0,
+                    obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
+        max_episode_steps=1000,
+    )
+    register(  # info: not used.
+        id="Peg2DFixed-v0",
+        entry_point=Peg2DEnv,
+        kwargs=dict(discrete=True, view_mode='grey', in_slot=0,
+                    goal_low=0, goal_high=0,
                     obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
         max_episode_steps=1000,
     )
