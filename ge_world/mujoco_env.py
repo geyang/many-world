@@ -1,4 +1,6 @@
 import os
+from contextlib import contextmanager
+
 import numpy as np
 from os import path
 import gym
@@ -21,7 +23,8 @@ class MujocoEnv(gym.Env):
      - Do not automatically set the observation/action space.
     """
 
-    def __init__(self, model_path, frame_skip=4, set_spaces=False):
+    def __init__(self, model_path, frame_skip=4, set_action_space=True, set_observation_space=True,
+                 width=64, height=64):
         if model_path.startswith("/"):
             fullpath = model_path
         else:
@@ -35,6 +38,9 @@ class MujocoEnv(gym.Env):
         self.viewer = None
         self._viewers = {}
 
+        self.width = width
+        self.height = height
+
         self.metadata = {
             'render.modes': ['human', 'rgb_array'],
             'video.frames_per_second': int(np.round(1.0 / self.dt))
@@ -43,15 +49,18 @@ class MujocoEnv(gym.Env):
         # questionable
         self.init_qpos = self.sim.data.qpos.ravel().copy()
         self.init_qvel = self.sim.data.qvel.ravel().copy()
-        if set_spaces:
-            observation, _reward, done, _info = self.step(np.zeros(self.model.nu))
-            assert not done
-            self.obs_dim = observation.size
-
+        if set_action_space:
             bounds = self.model.actuator_ctrlrange.copy()
+            if not bounds.all():
+                # use force bounds instead.
+                bounds = self.model.actuator_forcerange.copy()
             low = bounds[:, 0]
             high = bounds[:, 1]
             self.action_space = spaces.Box(low=low, high=high)
+        if set_observation_space:
+            observation, _reward, done, _info = self.step(np.zeros(self.model.nu))
+            assert not done
+            self.obs_dim = observation.size
 
             high = np.inf * np.ones(self.obs_dim)
             low = -high
@@ -62,26 +71,6 @@ class MujocoEnv(gym.Env):
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
-
-    # methods to override:
-    # ----------------------------
-
-    def reset_model(self):
-        """
-        Reset the robot degrees of freedom (qpos and qvel).
-        Implement this in each subclass.
-        """
-        raise NotImplementedError
-
-    def viewer_setup(self):
-        """
-        This method is called when the viewer is initialized and after every reset
-        Optionally implement this method, if you need to tinker with camera position
-        and so forth.
-        """
-        pass
-
-    # -----------------------------
 
     def reset(self, *args, **kwargs):
         self.sim.reset()
@@ -113,6 +102,16 @@ class MujocoEnv(gym.Env):
         for _ in range(n_frames):
             self.sim.step()
 
+    def set_color(self, id, rgba=None):
+        self.sim.model.geom_rgba[id] = rgba or 0
+
+    @contextmanager
+    def with_color(self, id, rgba=None):
+        old_rgba = self.sim.model.geom_rgba[id].copy()
+        self.sim.model.geom_rgba[id] = rgba or 0
+        yield
+        self.sim.model.geom_rgba[id] = old_rgba
+
     def render(self, mode='human', width=None, height=None):
         """
         returns images of modality <modeL
@@ -121,8 +120,8 @@ class MujocoEnv(gym.Env):
         :param kwargs: width, height (in pixels) of the image.
         :return: image(, depth). image is between [0, 1), depth is distance.
         """
-        width = width or self.default_window_width
-        height = height or self.default_window_height
+        width = width or self.width
+        height = height or self.height
         viewer = self._get_viewer(mode)
 
         if mode in ['rgb', 'rgb_array']:
@@ -145,6 +144,14 @@ class MujocoEnv(gym.Env):
             data = viewer.read_pixels(width, height, depth=False)
             # original image is upside-down, so flip it
             return data[::-1, :, :].mean(axis=-1).astype(np.uint8)
+        elif mode == 'notebook':
+            from PIL import Image
+            from IPython.display import display
+            viewer.render(width, height)
+            data = viewer.read_pixels(width, height, depth=False)
+            img = Image.fromarray(data[::-1])
+            display(img)
+            return data[::-1]
         elif mode == 'human':
             if width and height:
                 import glfw
@@ -159,8 +166,8 @@ class MujocoEnv(gym.Env):
             import glfw
             glfw.destroy_window(viewer.window)
 
-    default_window_width = DEFAULT_SIZE[0]
-    default_window_height = DEFAULT_SIZE[1]
+    # default_window_width = DEFAULT_SIZE[0]
+    # default_window_height = DEFAULT_SIZE[1]
 
     def _get_viewer(self, mode) -> mujoco_py.MjViewer:
         self.viewer = self._viewers.get(mode)
@@ -172,7 +179,7 @@ class MujocoEnv(gym.Env):
             # we turn off the overlay and make the window smaller.
             self.viewer._hide_overlay = True
             import glfw
-            glfw.set_window_size(self.viewer.window, self.default_window_width, self.default_window_height)
+            glfw.set_window_size(self.viewer.window, self.width, self.height)
         else:
             self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, -1)
         self.viewer_setup()
@@ -181,6 +188,12 @@ class MujocoEnv(gym.Env):
 
     def get_body_com(self, body_name):
         return self.data.get_body_xpos(body_name)
+
+    def state_dict(self):
+        return np.concatenate([
+            self.sim.data.qpos.flat,
+            self.sim.data.qvel.flat
+        ]).copy()
 
     def state_vector(self):
         return np.concatenate([

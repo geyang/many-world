@@ -34,7 +34,7 @@ class CMazeCFEnv(mujoco_env.MujocoEnv):
     is_good_state = lambda self, _: good_state(_)
 
     def __init__(self, frame_skip=10, obs_keys=(achieved_key, desired_key),
-                 obj_low=-0.22, obj_high=0.22, goal_low=-0.22, goal_high=0.22,
+                 obj_low=-0.24, obj_high=0.24, goal_low=-0.24, goal_high=0.24,
                  act_scale=0.5, discrete=False, id_less=False, done_on_goal=False):
         """
 
@@ -163,8 +163,8 @@ class CMazeCFEnv(mujoco_env.MujocoEnv):
         if goal is None:
             goal = self._get_goal()
 
-        self.sim.data.qpos[:] = np.concatenate([x, goal])
-        self.sim.data.qvel[:] = 0  # no velocity
+        pos = np.concatenate([x, goal])
+        self.set_state(pos, np.zeros_like(pos))
         return self._get_obs()
 
     def _get_delta(self):
@@ -181,7 +181,7 @@ class CMazeCFEnv(mujoco_env.MujocoEnv):
             qpos[2:] = [.3, .3]  # move goal out of frame
             self.set_state(qpos, self.sim.data.qvel)
             # todo: should use render('gray') instead.
-            obs['img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
+            obs['img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...]
             qpos[2:] = goal
             self.set_state(qpos, self.sim.data.qvel)
         if 'goal' in self.obs_keys:
@@ -192,7 +192,7 @@ class CMazeCFEnv(mujoco_env.MujocoEnv):
             qpos[2:] = [.3, .3]  # move goal out of frame
             self.set_state(qpos, self.sim.data.qvel)
             # todo: should use render('gray') instead.
-            obs['goal_img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...] / 255
+            obs['goal_img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...]
             self.set_state(curr_qpos, self.sim.data.qvel)
         return obs
 

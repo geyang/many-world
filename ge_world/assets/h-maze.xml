@@ -1,4 +1,4 @@
-<mujoco model="c-maze">
+<mujoco model="h-maze">
     <compiler angle="radian" inertiafromgeom="true"/>
     <default>
         <joint armature="1" damping="1" limited="true"/>
@@ -10,7 +10,7 @@
     </asset>
     <worldbody>
         <include file="lighting.xml"/>
-        <include file="c-maze-arena.xml"/>
+        <include file="h-maze-arena.xml"/>
         <!-- Arm -->
         <body name="object" pos="0 0 0.01">
             <geom rgba="0 0.5 1 1" type="box" size="0.04 0.04 0.04" density='0.00001' contype="1"/>

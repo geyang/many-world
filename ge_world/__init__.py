@@ -1,4 +1,5 @@
-from . import point_mass, reacher_multitask_v1, pendulum, amy_point_mass, goal_mass, c_maze, 回_maze, four_room, c_maze_cf, peg_2d
+from . import point_mass, reacher_multitask_v1, pendulum, amy_point_mass, goal_mass, c_maze, 回_maze, four_room, \
+    c_maze_cf, peg_2d, h_maze
 
 import gym
 

@@ -38,7 +38,9 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
     is_good_goal = lambda self, _: good_goal(_)
     is_good_state = lambda self, _: good_state(_)
 
-    def __init__(self, frame_skip=10, obs_keys=(achieved_key, desired_key),
+    def __init__(self,
+                 frame_skip=4,
+                 obs_keys=(achieved_key, desired_key),
                  obj_low=[-np.pi / 2, -np.pi + 0.2, -np.pi + 0.2],
                  obj_high=[np.pi / 2, np.pi - 0.2, np.pi - 0.2],
                  goal_low=-0.02, goal_high=0.02,
@@ -46,7 +48,9 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
                  free=False,  # whether to move the goal out of the way
                  view_mode="grey",
                  in_slot=0.1,  # prob. peg to be initialized inside the slot
-                 done_on_goal=False):
+                 done_on_goal=False,
+                 **kwargs
+                 ):
         """
 
         :param frame_skip:
@@ -55,28 +59,25 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         :param done_on_goal: False, bool. flag for setting done to True when reaching the goal
         """
         # self.controls = Controls(k_goals=1)
+        self.free = free
+        self.obs_keys = obs_keys
         self.discrete = discrete
         self.done_on_goal = done_on_goal
 
         self.in_slot = in_slot
 
         if self.discrete:
-            set_spaces = False
             actions = [-act_scale, 0, act_scale]
             self.a_dict = actions
             self.action_space = [spaces.Discrete(3) for _ in range(3)]
-        else:
-            set_spaces = True
 
         # call super init after initializing the variables.
         import os
         xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"assets/peg-2d.xml")
+        super().__init__(xml_path, frame_skip=frame_skip, set_action_space=True, set_observation_space=False, **kwargs)
 
-        mujoco_env.MujocoEnv.__init__(self, xml_path, frame_skip=frame_skip, set_spaces=set_spaces)
 
         # note: Experimental, hard-coded
-        self.width = 64
-        self.height = 64
         _ = dict()
         if 'x' in obs_keys:
             _['x'] = spaces.Box(low=np.array(obj_low), high=np.array(obj_high))
@@ -99,12 +100,6 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         self.goal_high = goal_high
         self.view_mode = view_mode
         self.observation_space = spaces.Dict(_)
-        self.obs_keys = obs_keys
-        self.free = free
-
-    # @property
-    # def k(self):
-    #     return self.controls.k
 
     def compute_reward(self, achieved, desired, *_):
         return 1
@@ -238,7 +233,7 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         img = self.render(self.view_mode, width=self.width, height=self.height)
         if self.view_mode == "grey":
             img = img[..., None]
-        self.goal_img = img.transpose(2, 0, 1) / 255
+        self.goal_img = img.transpose(2, 0, 1)
 
         # Now genrate the initial positions
 
@@ -265,7 +260,7 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
             img = self.render(self.view_mode, width=self.width, height=self.height)
             if self.view_mode == "grey":
                 img = img[..., None]
-            obs['img'] = img.transpose(2, 0, 1) / 255
+            obs['img'] = img.transpose(2, 0, 1)
             self.set_goal_pos(self.goal)
             self.set_state(qpos, self.sim.data.qvel)
         if 'goal_img' in self.obs_keys:
@@ -328,9 +323,9 @@ else:
     register(
         id="Peg2D-v0",
         entry_point=Peg2DEnv,
-        kwargs=dict(discrete=True, view_mode='grey', in_slot=0,
-                    obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
-        max_episode_steps=1000,
+        kwargs=dict(discrete=False, view_mode='grey', in_slot=0.1,
+                    obs_keys=['x', 'goal', 'img', 'goal_img']),
+        # max_episode_steps=1000,
     )
     register(  # info: not used.
         id="Peg2DFixed-v0",
@@ -338,26 +333,26 @@ else:
         kwargs=dict(discrete=True, view_mode='grey', in_slot=0,
                     goal_low=0, goal_high=0,
                     obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
-        max_episode_steps=1000,
+        # max_episode_steps=1000,
     )
     register(
         id="Peg2DFreeSampleRGB-v0",
         entry_point=Peg2DEnv,
         kwargs=dict(discrete=True, view_mode='rgb', free=True,
                     obs_keys=['x', 'goal', 'img', 'a']),
-        max_episode_steps=1000,
+        # max_episode_steps=1000,
     )
     register(
         id="Peg2DFreeSample-v0",
         entry_point=Peg2DEnv,
         kwargs=dict(discrete=True, view_mode='grey', free=True,
                     obs_keys=['x', 'goal', 'img', 'a']),
-        max_episode_steps=1000,
+        # max_episode_steps=1000,
     )
     register(
         id="Peg2DFree-v0",
         entry_point=Peg2DEnv,
         kwargs=dict(discrete=True, view_mode='grey', free=True,
                     obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
-        max_episode_steps=1000,
+        # max_episode_steps=1000,
     )

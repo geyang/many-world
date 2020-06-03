@@ -63,7 +63,7 @@ class PointMassMultitaskEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         """
         The multi-task Reacher environment for our experiment.
 
-        :type virtual_distractors: bool
+        :param virtual_distractors: bool
                                     If true, uses built-in xml definition with only 1 goal. Else use
                                     our custom xml definition, which also limites the shoulder joint angle.
         :param k_goals: int need to be in [2, 3, 4]
