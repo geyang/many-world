@@ -22,7 +22,7 @@
                       size=".02" type="cylinder"/>
                 <geom conaffinity="1" name="link1" rgba="0.35 0.35 0.35 1" size="0.1 0.01 0.01" pos="0.1 0 0"
                       type="box"/>
-                <joint axis="0 0 1" name="joint1" pos="0 0 0" type="hinge" limited="true" range="-3 3" damping="50"/>
+                <joint axis="0 0 1" name="joint1" pos="0 0 0" type="hinge" limited="true" range="-2.5 2.5" damping="50"/>
                 <body name="peg" pos="0.2 0 0.0">
                     <geom conaffinity="0" contype="0" fromto="0 0 -0.011 0 0 0.011" name="hand" rgba="0 0.45 1 1"
                           size=".02" type="cylinder"/>

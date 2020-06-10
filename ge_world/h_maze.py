@@ -72,7 +72,7 @@ class HMazeEnv(MujocoEnv, MazeCamEnv):
             xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"assets/h-maze.xml")
         MujocoEnv.__init__(self, xml_path, frame_skip=frame_skip, set_action_space=True, set_observation_space=False,
                            **kwargs)
-        MazeCamEnv.__init__(self, cam_id=cam_id)
+        MazeCamEnv.__init__(self, cam_id=cam_id, **kwargs)
 
         # dictionary observation space.
         _ = dict()
@@ -98,7 +98,7 @@ class HMazeEnv(MujocoEnv, MazeCamEnv):
             self.set_color(-3, 0)
 
     def compute_reward(self, achieved, desired, *_):
-        success = np.linalg.norm(achieved - desired, axis=-1) < 0.015
+        success = np.linalg.norm(achieved - desired, axis=-1) < 0.02
         return (success - 1).astype(float)
 
     reach_counts = 0
@@ -112,17 +112,19 @@ class HMazeEnv(MujocoEnv, MazeCamEnv):
             a = self.a_dict[int(a)]
         vec = self._get_delta()
         dist = np.linalg.norm(vec)
-        self.do_simulation(a, self.frame_skip)
-        # note: return observation *after* simulation. This is how DeepMind Lab does it.
-        ob = self._get_obs()
-        reward = self.compute_reward(ob['x'], ob['goal'])
-        if reward == 0:
-            done = True
-        else:
-            done = False
+        for i in range(self.frame_skip):
+            self.do_simulation(a, 1)
+            # note: return observation *after* simulation. This is how DeepMind Lab does it.
+            ob = self._get_obs("x", "goal")
+            reward = self.compute_reward(ob['x'], ob['goal'])
+            if reward == 0:
+                done = True
+                return self._get_obs(), reward, done, dict(dist=dist, success=float(dist < 0.02))
+            else:
+                done = False
 
         # todo: I changed this to 0.4 b/c discrete action jitters around. Remember to fix this. --Ge
-        return ob, reward, done, dict(dist=dist, success=float(dist < 0.04))
+        return self._get_obs(), reward, done, dict(dist=dist, success=float(dist < 0.02))
 
     def _get_goal(self):
         # return self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=2)
