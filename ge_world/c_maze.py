@@ -86,7 +86,7 @@ class CMazeEnv(MujocoEnv, MazeCamEnv):
         self.observation_space = spaces.Dict(_)
 
     def compute_reward(self, achieved, desired, *_):
-        success = np.linalg.norm(achieved - desired, axis=-1) < 0.015
+        success = np.linalg.norm(achieved - desired, axis=-1) < 0.02
         return (success - 1).astype(float)
 
     reach_counts = 0
