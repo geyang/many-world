@@ -1,17 +1,31 @@
+from contextlib import ExitStack
+
 import numpy as np
 from gym import spaces
 
 from ge_world import mujoco_env
+from ge_world.base_envs import MazeCamEnv
+from ge_world.mujoco_env import MujocoEnv
 
 
-def good_goal(goal):
-    """
-    filter for a good goal (state) in the maze.
+def elbow_pos(angles):
+    l = 0.02
+    x_pos = l * np.cos(angles[0]) + \
+            l * np.cos(angles[:2].sum(axis=-1))
+    y_pos = l * np.sin(angles[0]) + \
+            l * np.sin(angles[:2].sum(axis=-1))
+    return x_pos, y_pos
 
-    :param goal:
-    :return: bool, True if goal position is good
-    """
-    return goal[0] < 0.26 and -0.26 < goal[0]
+
+def effector_pos(angles):
+    l = 0.02
+    x_pos = l * np.cos(angles[0]) + \
+            l * np.cos(angles[:2].sum(axis=-1)) + \
+            l * np.cos(angles.sum(axis=-1))
+    y_pos = l * np.sin(angles[0]) + \
+            l * np.sin(angles[:2].sum(axis=-1)) + \
+            l * np.sin(angles.sum(axis=-1))
+    return x_pos, y_pos
 
 
 def good_state(state):
@@ -21,10 +35,29 @@ def good_state(state):
     :param state:
     :return: bool, True if goal position is good
     """
-    return state[0] < (np.pi / 2) and (- np.pi / 2) < state[0]
+    x, y = effector_pos(state)
+    x_0, y_0 = elbow_pos(state)
+    return 0.0 < x and -0.0275 < y < 0.0275 and \
+           0.0 < x_0 and -0.0275 < y_0 < 0.0275
 
 
-class Peg2DEnv(mujoco_env.MujocoEnv):
+good_goal = good_state
+
+
+def good_state_slot(state):
+    """
+    filter for a good goal (state) in the maze.
+
+    :param state:
+    :return: bool, True if goal position is good
+    """
+    x, y = effector_pos(state)
+    x_0, y_0 = elbow_pos(state)
+    return 0.0 < x < 0.0375 and -0.0275 < y < 0.0275 and \
+           0.0 < x_0 < 0.0375 and -0.0275 < y_0 < 0.0275
+
+
+class Peg2DEnv(MujocoEnv, MazeCamEnv):
     """
     2D peg insertion environment.
 
@@ -46,7 +79,9 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
                  goal_low=-0.02, goal_high=0.02,
                  act_scale=0.5, discrete=False,
                  free=False,  # whether to move the goal out of the way
+                 mix_mode=tuple(),
                  view_mode="grey",
+                 # hide_slot=False,
                  in_slot=0.1,  # prob. peg to be initialized inside the slot
                  done_on_goal=False,
                  **kwargs
@@ -60,6 +95,8 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         """
         # self.controls = Controls(k_goals=1)
         self.free = free
+        self.mix_mode = mix_mode  # cycle through [1, 0.1, -0.1, 0]
+        # self.hide_slot = hide_slot
         self.obs_keys = obs_keys
         self.discrete = discrete
         self.done_on_goal = done_on_goal
@@ -74,8 +111,9 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         # call super init after initializing the variables.
         import os
         xml_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"assets/peg-2d.xml")
-        super().__init__(xml_path, frame_skip=frame_skip, set_action_space=True, set_observation_space=False, **kwargs)
-
+        MujocoEnv.__init__(self, model_path=xml_path, frame_skip=frame_skip, set_action_space=True,
+                           set_observation_space=False, **kwargs)
+        MazeCamEnv.__init__(self, **kwargs)
 
         # note: Experimental, hard-coded
         _ = dict()
@@ -102,30 +140,29 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         self.observation_space = spaces.Dict(_)
 
     def compute_reward(self, achieved, desired, *_):
-        return 1
-        # success = np.linalg.norm(achieved - desired, axis=-1) < 0.02
-        # return (success - 1).astype(float)
+        success = np.linalg.norm(achieved - desired, axis=-1, ord=2) < 0.02
+        return (success - 1).astype(float)
 
     def step(self, a):
         qpos = self.sim.data.qpos
         qvel = self.sim.data.qvel
         qvel[:] = 0
         self.set_state(qpos, qvel)
+
+        # todo: remove discrete action support.
         if self.discrete:
             a = [self.a_dict[int(a_i)] for a_i in a]
-        self.do_simulation(a, self.frame_skip)
-        # note: return observation *after* simulation. This is how DeepMind Lab does it.
-        ob = self._get_obs()
 
-        dist = np.linalg.norm(self.goal_state - qpos, ord=2)
-        done = dist < 0.04
-        reward = float(done) - 1
-
-        # offer raw action to agent
-        if 'a' in self.obs_keys:
-            ob['a'] = a.copy()
-
-        return ob, reward, done, dict(dist=dist, success=float(done))
+        for i in range(self.frame_skip):
+            self.do_simulation(a, 1)
+            # note: return observation *after* simulation. This is how DeepMind Lab does it.
+            ob = self._get_obs("x", "goal")
+            # do not implement different reward for insertion.
+            reward = self.compute_reward(ob['x'], ob['goal'])
+            done = bool(1 + reward)
+            if reward == 0 or i == (self.frame_skip - 1):
+                dist = np.linalg.norm(ob['goal'] - ob['x'], ord=2)
+                return self._get_obs(), reward, done, dict(dist=dist, success=float(done))
 
     def viewer_setup(self):
         self.viewer.cam.trackbodyid = 0
@@ -150,94 +187,86 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
                 if good_goal(goal):
                     return goal
 
-    def effector_pos(self, angles):
-        l = 0.02
-        x_pos = l * np.cos(angles[0]) + \
-                l * np.cos(angles[:2].sum(axis=-1)) + \
-                l * np.cos(angles.sum(axis=-1))
-        y_pos = l * np.sin(angles[0]) + \
-                l * np.sin(angles[:2].sum(axis=-1)) + \
-                l * np.sin(angles.sum(axis=-1))
-        return x_pos, y_pos
+    def _get_state(self, slot_y=None):
+        if slot_y is not None and self.np_random.rand() < self.in_slot:
+            return self._get_goal_state(x=self.np_random.rand() * - 0.01, slot_y=slot_y)
 
-    def _get_state(self, goal=None):
-        if self.np_random.rand() < self.in_slot:
-            return self._get_goal_state(x=self.np_random.rand() * - 0.01, goal=goal)
-
-        while True:
-            import numpy as np
-
-            states = self.np_random.uniform(  # info: use single polar for slot mode.
-                low=[-1.5 if self.free else 0, 0, -0.5], high=[1.5, 1.5, 0.5], size=(4, 3))
-            states[:, 1] = - np.sign(states[:, 0]) * states[:, 1] - states[:, 0]
-            states[:, 2] = states[:, 2] - states[:, :2].sum(axis=-1)
+        while True:  # keep it simple.
+            states = self.np_random.uniform(low=[0, -2.5, 0], high=[1.5, 0, 2.7], size=(20, 3))
 
             for state in states:
-                finger_pos = self.effector_pos(state)
-                if not self.free:
-                    if 0.02 <= finger_pos[0] < 0.035:
+                if self.free:
+                    if good_state(state):
                         return state
-                    continue
-                if good_state(state):
-                    return state
+                else:
+                    if good_state_slot(state):
+                        return state
 
-    def _get_goal_state(self, goal, x=0., ):
-        # if self.goal_high:
-        #     assert goal == 0, "only zero goal position is allowed for fixed slot."
+    def _get_goal_state(self, slot_y, x=0., ):
         qpos = np.zeros(3)
 
-        peg_x_y = [x, goal / 10]
+        peg_x_y = [x, slot_y / 10]
 
         base = (0.03 + peg_x_y[0])
         hypo = np.linalg.norm([base, peg_x_y[1]], ord=2)
         a0 = np.arctan(peg_x_y[1] / base)
-        if self.free:
-            a1 = np.sign(self.np_random.rand() - 0.5) * np.arccos(hypo / 0.04)
-        else:
-            a1 = np.arccos(hypo / 0.04)
+        a1 = np.arccos(hypo / 0.04)
+
         qpos[0] = a0 + a1
         qpos[1] = - 2 * a1
         qpos[2] = 0 - qpos[0] - qpos[1]
         return qpos
 
-    def set_goal_pos(self, goal):
+    def set_slot_pos(self, goal):
         self.model.body_pos[-1, 1] = goal
         self.sim.set_constants()
 
-    def reset_model(self, x=None, goal=None):
+    def mixed_render(self, *args, **kwargs):
+        """A drop-in replacement of default render, but turns the slot on and off
+        50% of the time, unless the end-effector intersects the wall."""
+        qpos = self.sim.data.qpos.copy()
+        flash = self.mix_mode and good_state_slot(qpos)
+        if flash:
+            slot_pos = self.np_random.choice(self.mix_mode, size=1)
+            self.set_slot_pos(slot_pos)
+            self.set_state(qpos, self.sim.data.qvel)
+
+        r = self.render(*args, **kwargs)
+
+        if flash:
+            self.set_slot_pos(self.slot_pos)
+            self.set_state(qpos, self.sim.data.qvel)
+
+        return r
+
+    def reset_model(self, x=None, slot_y=None):
+
         if self.free:
-            # assert goal is None, "can not set goal in free mode."
-            # assert not self.in_slot, "can not have in_slot probability."
-            goal = self._get_goal()
-            goal_pos = self._get_state(goal=goal)
+            self.slot_pos = 1 if slot_y is None else slot_y
+            goal_pos = self._get_state(slot_y=None if self.slot_pos == 1 else self.slot_pos)
 
             if x is None:  # in free mode, the initial y position should be sampled differently
                 diff_goal = self._get_goal()
                 x = self._get_state(diff_goal)
 
-            # now move the slot out of the way.
-            self.goal = 1
-
         else:
-            self.goal = goal or self._get_goal()
-            goal_pos = self._get_goal_state(x=-0.003, goal=self.goal)
+            self.slot_pos = self._get_goal() if slot_y is None else slot_y
+            goal_pos = self._get_goal_state(x=-0.003, slot_y=self.slot_pos)
 
-            if x is None:
-                x = self._get_state(self.goal)
+        if x is None:
+            x = self._get_state(self.slot_pos)
 
         self.goal_state = goal_pos.copy()
 
-        self.set_goal_pos(1)
+        self.set_slot_pos(self.slot_pos)
         self.set_state(goal_pos, self.sim.data.qvel)
 
-        img = self.render(self.view_mode, width=self.width, height=self.height)
+        img = self.mixed_render(self.view_mode, width=self.width, height=self.height)
         if self.view_mode == "grey":
             img = img[..., None]
         self.goal_img = img.transpose(2, 0, 1)
 
-        # Now genrate the initial positions
-
-        self.set_goal_pos(self.goal)
+        # self.set_slot_pos(self.goal)
         self.sim.data.qpos[:] = x
         self.sim.data.qvel[:] = 0  # no velocity
         return self._get_obs()
@@ -246,24 +275,27 @@ class Peg2DEnv(mujoco_env.MujocoEnv):
         *delta, _ = self.get_body_com("goal") - self.get_body_com("object")
         return delta
 
-    def _get_obs(self):
+    def _get_obs(self, *obs_keys):
+        obs_keys = obs_keys or self.obs_keys
         obs = {}
         qpos = self.sim.data.qpos.flat.copy()
-        if 'x' in self.obs_keys:
+        if 'x' in obs_keys:
             obs['x'] = qpos.copy()
-        if 'goal' in self.obs_keys:
-            obs['goal'] = self.goal
-        if 'img' in self.obs_keys:
-            self.set_goal_pos(1)
+        if 'goal' in obs_keys:
+            obs['goal'] = self.goal_state
+        if 'img' in obs_keys:
+            # if self.hide_slot:
+            #     self.set_goal_pos(1)
             self.set_state(qpos.copy(), self.sim.data.qvel)
 
-            img = self.render(self.view_mode, width=self.width, height=self.height)
+            img = self.mixed_render(self.view_mode, width=self.width, height=self.height)
             if self.view_mode == "grey":
                 img = img[..., None]
             obs['img'] = img.transpose(2, 0, 1)
-            self.set_goal_pos(self.goal)
+            # if self.hide_slot:
+            #     self.set_goal_pos(self.goal)
             self.set_state(qpos, self.sim.data.qvel)
-        if 'goal_img' in self.obs_keys:
+        if 'goal_img' in obs_keys:
             obs['goal_img'] = self.goal_img
 
         return obs

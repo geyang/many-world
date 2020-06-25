@@ -7,9 +7,9 @@ class MazeCamEnv(metaclass=abc.ABCMeta):
         self.width = width
         self.height = height
 
-    def viewer_setup(self, cam_id=None):
-        cam_id = self.cam_id if cam_id is None else cam_id
-
+    def viewer_setup(self):
+        """The camera id here is not real."""
+        cam_id = self.cam_id
         camera = self.viewer.cam
 
         camera.trackbodyid = 0

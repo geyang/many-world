@@ -1,5 +1,6 @@
 import os
-from contextlib import contextmanager
+import sys
+from contextlib import contextmanager, ExitStack
 
 import numpy as np
 from os import path
@@ -122,32 +123,30 @@ class MujocoEnv(gym.Env):
         """
         width = width or self.width
         height = height or self.height
-        viewer = self._get_viewer(mode)
+        viewer = self._get_viewer(mode, cam_id=self.cam_id)
+
+        viewer.render(width, height)
 
         if mode in ['rgb', 'rgb_array']:
-            viewer.render(width, height)
             data = viewer.read_pixels(width, height, depth=False)
             # original image is upside-down, so flip it
             return data[::-1, :, :]
         elif mode == 'rgbd':
-            viewer.render(width, height)
             rgb, d = viewer.read_pixels(width, height, depth=True)
             # original image is upside-down, so flip it
             return rgb[::-1, :, :], d[::-1, :]
         elif mode == 'depth':
-            viewer.render(width, height)
             _, d = viewer.read_pixels(width, height, depth=True)
             # original image is upside-down, so flip it
             return d[::-1, :]
         elif mode == 'grey':
-            viewer.render(width, height)
             data = viewer.read_pixels(width, height, depth=False)
             # original image is upside-down, so flip it
             return data[::-1, :, :].mean(axis=-1).astype(np.uint8)
         elif mode == 'notebook':
             from PIL import Image
             from IPython.display import display
-            viewer.render(width, height)
+
             data = viewer.read_pixels(width, height, depth=False)
             img = Image.fromarray(data[::-1])
             display(img)
@@ -169,9 +168,14 @@ class MujocoEnv(gym.Env):
     # default_window_width = DEFAULT_SIZE[0]
     # default_window_height = DEFAULT_SIZE[1]
 
-    def _get_viewer(self, mode) -> mujoco_py.MjViewer:
-        self.viewer = self._viewers.get(mode)
+    def _get_viewer(self, mode, cam_id) -> mujoco_py.MjViewer:
+        mode_cam_id = mode, cam_id
+
+        self.viewer = self._viewers.get(mode_cam_id)
         if self.viewer is not None:
+            if sys.platform == 'darwin':
+                # info: to fix the black image of death.
+                self.viewer._set_mujoco_buffers()
             return self.viewer
 
         if mode == 'human':
@@ -182,8 +186,9 @@ class MujocoEnv(gym.Env):
             glfw.set_window_size(self.viewer.window, self.width, self.height)
         else:
             self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, -1)
+
         self.viewer_setup()
-        self._viewers[mode] = self.viewer
+        self._viewers[mode_cam_id] = self.viewer
         return self.viewer
 
     def get_body_com(self, body_name):
