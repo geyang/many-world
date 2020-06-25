@@ -73,7 +73,7 @@ class Peg2DEnv(MujocoEnv, MazeCamEnv):
 
     def __init__(self,
                  frame_skip=4,
-                 obs_keys=(achieved_key, desired_key),
+                 obs_keys=(achieved_key, desired_key, "ef_pos"),
                  obj_low=[-np.pi / 2, -np.pi + 0.2, -np.pi + 0.2],
                  obj_high=[np.pi / 2, np.pi - 0.2, np.pi - 0.2],
                  goal_low=-0.02, goal_high=0.02,
@@ -240,6 +240,8 @@ class Peg2DEnv(MujocoEnv, MazeCamEnv):
         return r
 
     def reset_model(self, x=None, slot_y=None):
+        assert not self.mix_mode or slot_y is None, \
+            f"can not set `slot_y={slot_y}` when mixed_mode is {self.mix_mode}"
 
         if self.free:
             self.slot_pos = 1 if slot_y is None else slot_y
@@ -283,6 +285,8 @@ class Peg2DEnv(MujocoEnv, MazeCamEnv):
             obs['x'] = qpos.copy()
         if 'goal' in obs_keys:
             obs['goal'] = self.goal_state
+        if 'ef_pos' in obs_keys:
+            obs['ef_pos'] = effector_pos(qpos)
         if 'img' in obs_keys:
             # if self.hide_slot:
             #     self.set_goal_pos(1)
@@ -299,6 +303,19 @@ class Peg2DEnv(MujocoEnv, MazeCamEnv):
             obs['goal_img'] = self.goal_img
 
         return obs
+
+
+class MixedPeg2D(Peg2DEnv):
+    """this one flips the self.free flag every other environment reset."""
+
+    def __init__(self, *args, free=None, **kwargs):
+        assert free is None, "the `free` option is under control by the Mixed environment itself."
+        super().__init__(*args, **kwargs)
+
+
+    def reset_model(self, *args, **kwargs):
+        self.free = self.np_random.rand() > 0.5
+        return Peg2DEnv.reset_model(self, *args, **kwargs)
 
 
 if __name__ == "__main__":
@@ -356,35 +373,42 @@ else:
         id="Peg2D-v0",
         entry_point=Peg2DEnv,
         kwargs=dict(discrete=False, view_mode='grey', in_slot=0.1,
-                    obs_keys=['x', 'goal', 'img', 'goal_img']),
-        # max_episode_steps=1000,
-    )
-    register(  # info: not used.
-        id="Peg2DFixed-v0",
-        entry_point=Peg2DEnv,
-        kwargs=dict(discrete=True, view_mode='grey', in_slot=0,
-                    goal_low=0, goal_high=0,
-                    obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
+                    obs_keys=['x', 'goal', 'img', 'goal_img', 'ef_pos']),
         # max_episode_steps=1000,
     )
     register(
-        id="Peg2DFreeSampleRGB-v0",
-        entry_point=Peg2DEnv,
-        kwargs=dict(discrete=True, view_mode='rgb', free=True,
-                    obs_keys=['x', 'goal', 'img', 'a']),
+        id="Peg2D-mixed-v0",
+        entry_point=MixedPeg2D,
+        kwargs=dict(discrete=False, view_mode='grey', in_slot=0.1, mix_mode=(1, 0),
+                    obs_keys=['x', 'goal', 'img', 'goal_img', 'ef_pos']),
         # max_episode_steps=1000,
     )
-    register(
-        id="Peg2DFreeSample-v0",
-        entry_point=Peg2DEnv,
-        kwargs=dict(discrete=True, view_mode='grey', free=True,
-                    obs_keys=['x', 'goal', 'img', 'a']),
-        # max_episode_steps=1000,
-    )
-    register(
-        id="Peg2DFree-v0",
-        entry_point=Peg2DEnv,
-        kwargs=dict(discrete=True, view_mode='grey', free=True,
-                    obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
-        # max_episode_steps=1000,
-    )
+    # register(  # info: not used.
+    #     id="Peg2DFixed-v0",
+    #     entry_point=Peg2DEnv,
+    #     kwargs=dict(discrete=True, view_mode='grey', in_slot=0,
+    #                 goal_low=0, goal_high=0,
+    #                 obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
+    #     # max_episode_steps=1000,
+    # )
+    # register(
+    #     id="Peg2DFreeSampleRGB-v0",
+    #     entry_point=Peg2DEnv,
+    #     kwargs=dict(discrete=True, view_mode='rgb', free=True,
+    #                 obs_keys=['x', 'goal', 'img', 'a']),
+    #     # max_episode_steps=1000,
+    # )
+    # register(
+    #     id="Peg2DFreeSample-v0",
+    #     entry_point=Peg2DEnv,
+    #     kwargs=dict(discrete=True, view_mode='grey', free=True,
+    #                 obs_keys=['x', 'goal', 'img', 'a']),
+    #     # max_episode_steps=1000,
+    # )
+    # register(
+    #     id="Peg2DFree-v0",
+    #     entry_point=Peg2DEnv,
+    #     kwargs=dict(discrete=True, view_mode='grey', free=True,
+    #                 obs_keys=['x', 'goal', 'img', 'goal_img', 'a']),
+    #     # max_episode_steps=1000,
+    # )
