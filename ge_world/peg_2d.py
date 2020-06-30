@@ -44,17 +44,18 @@ def good_state(state):
 good_goal = good_state
 
 
-def good_state_slot(state):
+def good_state_slot(state, padding=0):
     """
     filter for a good goal (state) in the maze.
 
     :param state:
+    :param padding: default 0, padding to the right.
     :return: bool, True if goal position is good
     """
     x, y = effector_pos(state)
     x_0, y_0 = elbow_pos(state)
-    return 0.0 < x < 0.0375 and -0.0275 < y < 0.0275 and \
-           0.0 < x_0 < 0.0375 and -0.0275 < y_0 < 0.0275
+    return 0.0 < x < (0.0375 - padding) and -0.0275 < y < 0.0275 and \
+           0.0 < x_0 < (0.0375 - padding) and -0.0275 < y_0 < 0.0275
 
 
 class Peg2DEnv(MujocoEnv, MazeCamEnv):
@@ -225,7 +226,7 @@ class Peg2DEnv(MujocoEnv, MazeCamEnv):
         """A drop-in replacement of default render, but turns the slot on and off
         50% of the time, unless the end-effector intersects the wall."""
         qpos = self.sim.data.qpos.copy()
-        flash = self.mix_mode and good_state_slot(qpos)
+        flash = self.mix_mode and good_state_slot(qpos, padding=0.002)
         if flash:
             slot_pos = self.np_random.choice(self.mix_mode, size=1)
             self.set_slot_pos(slot_pos)
@@ -306,15 +307,24 @@ class Peg2DEnv(MujocoEnv, MazeCamEnv):
 
 
 class MixedPeg2D(Peg2DEnv):
-    """this one flips the self.free flag every other environment reset."""
-
     def __init__(self, *args, free=None, **kwargs):
-        assert free is None, "the `free` option is under control by the Mixed environment itself."
+        """this one flips the self.free flag every other environment reset.
+
+        :param args:
+
+        :param free: if free is not set (None), then the environment cycles
+            through free and non-free (slot) mode on each reaset.
+
+            If free is set, then this value is respected.
+
+        :param kwargs:
+        """
+        self.rand = True if free is None else False
         super().__init__(*args, **kwargs)
 
-
     def reset_model(self, *args, **kwargs):
-        self.free = self.np_random.rand() > 0.5
+        if self.rand:
+            self.free = self.np_random.rand() > 0.5
         return Peg2DEnv.reset_model(self, *args, **kwargs)
 
 
