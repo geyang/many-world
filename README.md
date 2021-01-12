@@ -114,4 +114,4 @@ pip install cmx
 
 This is a python modul that allows us to generate markdown readmes like this automatically, as if we are writing a jupyter notebook (but your script is actually python).
 
-**The script that generated this README automatically could be found here: ** [specs/many_world_spec.py](specs/many_world_spec.py)
+**The script that generated this README automatically could be found here:** [specs/many_world_spec.py](specs/many_world_spec.py)
