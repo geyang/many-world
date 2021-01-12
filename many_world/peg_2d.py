@@ -3,9 +3,9 @@ from contextlib import ExitStack
 import numpy as np
 from gym import spaces
 
-from ge_world import mujoco_env
-from ge_world.base_envs import MazeCamEnv
-from ge_world.mujoco_env import MujocoEnv
+from many_world import mujoco_env
+from many_world.base_envs import MazeCamEnv
+from many_world.mujoco_env import MujocoEnv
 
 
 def elbow_pos(angles):

@@ -8,7 +8,7 @@ envs = [
 
 
 def render(env_name):
-    from ge_world import IS_PATCHED
+    from many_world import IS_PATCHED
     assert IS_PATCHED, "need the patched gym"
     import gym, numpy as np
     from tqdm import tqdm
@@ -46,6 +46,6 @@ if __name__ == "__main__":
 
     # logger.configure(log_directory="/tmp/learning-to-imitate", prefix="envs")
     logger.configure(log_directory=os.path.abspath("../datasets"), prefix="")
-    # logger.configure(log_directory="http://54.71.92.65:8081", prefix="debug/ge_world/")
+    # logger.configure(log_directory="http://54.71.92.65:8081", prefix="debug/many_world/")
 
     [render(env) for env in envs]

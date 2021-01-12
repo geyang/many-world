@@ -1,7 +1,7 @@
 import numpy as np
 from gym import spaces
 
-from ge_world import mujoco_env
+from many_world import mujoco_env
 
 
 class Controls:
@@ -211,7 +211,7 @@ else:
     # note: kwargs are not passed in to the constructor when entry_point is a function.
     register(
         id="PointMassDiscrete-v0",
-        # entry_point="ge_world.amy_point_mass:PointMassEnv",
+        # entry_point="many_world.amy_point_mass:PointMassEnv",
         entry_point=PointMassEnv,
         kwargs={'discrete': True},
         max_episode_steps=50,
@@ -219,7 +219,7 @@ else:
     )
     register(
         id="PointMassDiscreteIdLess-v0",
-        # entry_point="ge_world.amy_point_mass:PointMassEnv",
+        # entry_point="many_world.amy_point_mass:PointMassEnv",
         entry_point=PointMassEnv,
         kwargs={'id_less': True, 'discrete': True},
         max_episode_steps=50,
@@ -227,7 +227,7 @@ else:
     )
     register(
         id="PointMassDiscreteIDLess-v0",
-        # entry_point="ge_world.amy_point_mass:PointMassEnv",
+        # entry_point="many_world.amy_point_mass:PointMassEnv",
         entry_point=PointMassEnv,
         kwargs={'id_less': True, 'discrete': True, 'done_on_goal': True},
         max_episode_steps=50,

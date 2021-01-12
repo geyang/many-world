@@ -1,6 +1,6 @@
 import numpy as np
 from gym.envs import register
-from ge_world import mujoco_env
+from many_world import mujoco_env
 
 
 class PendulumEnv(mujoco_env.MujocoEnv):

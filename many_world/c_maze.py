@@ -1,8 +1,8 @@
 import numpy as np
 from gym import spaces
 
-from ge_world.mujoco_env import MujocoEnv
-from ge_world.base_envs import MazeCamEnv
+from many_world.mujoco_env import MujocoEnv
+from many_world.base_envs import MazeCamEnv
 
 
 def good_goal(goal):

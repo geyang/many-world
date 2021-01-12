@@ -1,7 +1,7 @@
 import numpy as np
 from gym import spaces
 
-from ge_world import mujoco_env
+from many_world import mujoco_env
 
 
 def good_goal(goal):

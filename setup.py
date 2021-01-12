@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-setup(name='ge_world',
+setup(name='many_world',
       packages=find_packages(),
       install_requires=["mujoco-py", "gym"],
       description='collections of RL environments',

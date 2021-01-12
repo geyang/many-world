@@ -1,2 +1,2 @@
 include VERSION
-recursive-include ge_world/assets *.*
+recursive-include many_world/assets *.*

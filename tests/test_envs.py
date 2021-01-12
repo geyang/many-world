@@ -5,7 +5,7 @@ import pytest
 def setup():
     from urllib.parse import quote
     from ml_logger import logger
-    from ge_world import IS_PATCHED
+    from many_world import IS_PATCHED
     assert IS_PATCHED, "need to be patched"
     import gym
     gym.logger.set_level(40)

@@ -11,7 +11,7 @@ def setup():
 def main():
     import gym
 
-    env = gym.make('ge_world:HMaze-v0')
+    env = gym.make('many_world:HMaze-v0')
     env.reset()
     obs, reward, done, info = env.step(env.action_space.sample())
     print(obs.keys())
