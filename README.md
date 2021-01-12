@@ -24,6 +24,12 @@ for i in range(1, 5):
 
 
 
+## Specs and Documentation
+
+For up-to-date, live documentation, take a look at the [specs folder](specs). We use the library [`cmx-python`](https://github.com/cmx/cmx-python)  to generate markdown files like this, containing figures, automatically. 
+
+
+
 ## To Develop
 
 Our research python modules need a proper `setup.py` file that installs the module. First clone this repository, then
