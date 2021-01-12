@@ -45,7 +45,7 @@ doc.print('the reward is:', r)
 ```
 [-0.06514147  0.09519143 -0.15679238 -0.0590579  -0.13886868 -0.0413905
   0.00762082  0.0534794   0.07483203  0.08715882]
-the reward is: 0.14495721977603712
+the reward is: -0.014966090180842717
 ```
 
 ## Multiple Distractor Objects
@@ -54,7 +54,7 @@ Currently support up to 4.
 
 | **n_objs = 1** | **n_objs = 2** | **n_objs = 3** | **n_objs = 4** |
 |:--------------:|:--------------:|:--------------:|:--------------:|
-| <img style="align-self:center;" src="figures/many_world-1.png?ts=644148" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-2.png?ts=913076" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-3.png?ts=059031" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-4.png?ts=232099" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> |
+| <img style="align-self:center;" src="figures/many_world-1.png?ts=999981" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-2.png?ts=244880" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-3.png?ts=382285" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-4.png?ts=530763" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> |
 
 ```python
 for i in range(1, 5):
@@ -75,7 +75,7 @@ constructor.
 
 | **n_objs=1** | **n_objs=2** | **n_objs=3** | **n_objs=4** |
 |:------------:|:------------:|:------------:|:------------:|
-| ![figures/many_world-1.gif?ts=717442](figures/many_world-1.gif?ts=717442) | ![figures/many_world-2.gif?ts=078462](figures/many_world-2.gif?ts=078462) | ![figures/many_world-3.gif?ts=511889](figures/many_world-3.gif?ts=511889) | ![figures/many_world-4.gif?ts=022383](figures/many_world-4.gif?ts=022383) |
+| ![figures/many_world-1.gif?ts=380099](figures/many_world-1.gif?ts=380099) | ![figures/many_world-2.gif?ts=817556](figures/many_world-2.gif?ts=817556) | ![figures/many_world-3.gif?ts=297564](figures/many_world-3.gif?ts=297564) | ![figures/many_world-4.gif?ts=773726](figures/many_world-4.gif?ts=773726) |
 
 ```python
 for i in range(1, 5):

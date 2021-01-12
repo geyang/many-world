@@ -63,8 +63,6 @@ class ManyWorldEnv(mujoco_env.MujocoEnv, base_envs.MazeCamEnv):
         success = np.linalg.norm(achieved - desired, axis=-1) < 0.02
         return (success - 1).astype(float)
 
-    reach_counts = 0
-
     def step(self, a):
         qpos = self.sim.data.qpos
         qvel = self.sim.data.qvel
@@ -73,7 +71,7 @@ class ManyWorldEnv(mujoco_env.MujocoEnv, base_envs.MazeCamEnv):
         # note: return observation *after* simulation. This is how DeepMind Lab does it.
         # remove the pos and vel of the target sphere
         ob = np.concatenate([qpos, qvel[:-2]])
-        reward = np.linalg.norm(self._get_delta()) - self.dist
+        reward = self.dist - np.linalg.norm(self._get_delta())
         done = False
 
         return ob, reward, done, dict(dist=self.dist, success=float(self.dist < 0.02))
@@ -95,7 +93,8 @@ class ManyWorldEnv(mujoco_env.MujocoEnv, base_envs.MazeCamEnv):
         self.viewer.cam.azimuth = 90
 
     def reset_model(self, x=None, goal=None):
-        self.reach_counts = 0
+        self.set_state(self.init_qpos, self.init_qvel)
+
         if x is None:
             x = self.np_random.uniform(low=self.obj_low, high=self.obj_high, size=2 * self.n_objs)
         vel = self.np_random.uniform(low=0, high=self.qvel_high, size=2 * self.n_objs)
@@ -108,6 +107,8 @@ class ManyWorldEnv(mujoco_env.MujocoEnv, base_envs.MazeCamEnv):
         qpos = self.sim.data.qpos
         qvel = self.sim.data.qvel
         ob = np.concatenate([qpos, qvel[:-2]])
+
+        self.sim.forward()
         return ob
 
     def _get_delta(self):
