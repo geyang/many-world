@@ -9,7 +9,7 @@ blocks to slide, sometimes indefinitely.
 
 | **n_objs = 1** | **n_objs = 2** | **n_objs = 3** | **n_objs = 4** |
 |:--------------:|:--------------:|:--------------:|:--------------:|
-| <img style="align-self:center;" src="figures/many_world-1.png?ts=394888" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-2.png?ts=643944" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-3.png?ts=766356" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-4.png?ts=901073" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> |
+| <img style="align-self:center;" src="figures/many_world-1.png?ts=006076" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-2.png?ts=296787" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-3.png?ts=443373" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> | <img style="align-self:center;" src="figures/many_world-4.png?ts=573546" image="None" styles="{'margin': '0.5em'}" width="None" height="None"/> |
 
 ```python
 import gym
