@@ -1,10 +1,10 @@
 import os
 import sys
-from contextlib import contextmanager, ExitStack
-
-import numpy as np
+from contextlib import contextmanager
 from os import path
+
 import gym
+import numpy as np
 from gym import error, spaces
 from gym.utils import seeding
 
@@ -47,17 +47,16 @@ class MujocoEnv(gym.Env):
             'video.frames_per_second': int(np.round(1.0 / self.dt))
         }
 
-        # questionable
+        # to quickly reset the state of the simulator for consistency.
         self.init_qpos = self.sim.data.qpos.ravel().copy()
         self.init_qvel = self.sim.data.qvel.ravel().copy()
+
         if set_action_space:
             bounds = self.model.actuator_ctrlrange.copy()
-            if not bounds.all():
-                # use force bounds instead.
+            if not bounds.all():  # use force bounds instead.
                 bounds = self.model.actuator_forcerange.copy()
-            low = bounds[:, 0]
-            high = bounds[:, 1]
-            self.action_space = spaces.Box(low=low, high=high)
+            self.action_space = spaces.Box(low=bounds[:, 0], high=bounds[:, 1])
+
         if set_observation_space:
             observation, _reward, done, _info = self.step(np.zeros(self.model.nu))
             assert not done

@@ -13,35 +13,20 @@ class ManyWorldEnv(mujoco_env.MujocoEnv, base_envs.MazeCamEnv):
     is_good_goal = lambda *_: True
     is_good_state = lambda *_: True
 
-    def __init__(self, frame_skip=10, obs_keys=(achieved_key, desired_key),
-                 n_objs=4,
-                 obj_low=-0.2, obj_high=0.2, goal_low=-0.2, goal_high=0.2,
-                 discrete=False, id_less=False, done_on_goal=False, **_):
+    def __init__(self, frame_skip=6, obs_keys=(achieved_key, desired_key),
+                 n_objs=4, qvel_high=0.1, obj_low=-0.2, obj_high=0.2, goal_low=-0.2, goal_high=0.2,
+                 done_on_goal=False, **_):
         """
 
         :param frame_skip:
-        :param discrete:
-        :param id_less:
         :param done_on_goal: False, bool. flag for setting done to True when reaching the goal
         """
-        # self.controls = Controls(k_goals=1)
-        self.discrete = discrete
         self.done_on_goal = done_on_goal
+        self.obs_keys = obs_keys
         self.n_objs = n_objs
+        self.qvel_high = qvel_high
 
-        print(">>>", n_objs)
-
-        if self.discrete:
-            set_observation_spaces = False
-            actions = [-.5, 0, .5]
-            if id_less:
-                self.a_dict = [(a, b) for a in actions for b in actions if not (a == 0 and b == 0)]
-                self.action_space = spaces.Discrete(8)
-            else:
-                self.a_dict = [(a, b) for a in actions for b in actions]
-                self.action_space = spaces.Discrete(9)
-        else:
-            set_observation_spaces = True
+        set_observation_spaces = True
 
         # call super init after initializing the variables.
         import os
@@ -74,10 +59,6 @@ class ManyWorldEnv(mujoco_env.MujocoEnv, base_envs.MazeCamEnv):
         self.observation_space = spaces.Dict(_)
         self.obs_keys = obs_keys
 
-    # @property
-    # def k(self):
-    #     return self.controls.k
-
     def compute_reward(self, achieved, desired, *_):
         success = np.linalg.norm(achieved - desired, axis=-1) < 0.02
         return (success - 1).astype(float)
@@ -87,29 +68,15 @@ class ManyWorldEnv(mujoco_env.MujocoEnv, base_envs.MazeCamEnv):
     def step(self, a):
         qpos = self.sim.data.qpos
         qvel = self.sim.data.qvel
-        qvel[:2] = 0
-        self.set_state(qpos, qvel)
-        if self.discrete:
-            a = self.a_dict[int(a)]
-        vec = self._get_delta()
-        dist = np.linalg.norm(vec)
+        self.dist = np.linalg.norm(self._get_delta())
         self.do_simulation(a, self.frame_skip)
         # note: return observation *after* simulation. This is how DeepMind Lab does it.
-        ob = self._get_obs()
-        reward = self.compute_reward(ob['x'], ob['goal'])
-        if self.reach_counts:
-            self.reach_counts = self.reach_counts + 1 if reward == 0 else 0
-        elif reward == 0:
-            self.reach_counts = 1
+        # remove the pos and vel of the target sphere
+        ob = np.concatenate([qpos, qvel[:-2]])
+        reward = np.linalg.norm(self._get_delta()) - self.dist
+        done = False
 
-        if self.done_on_goal and self.reach_counts > 1:
-            done = True
-            self.reach_counts = 0
-        else:
-            done = False
-
-        # todo: I changed this to 0.4 b/c discrete action jitters around. Remember to fix this. --Ge
-        return ob, reward, done, dict(dist=dist, success=float(dist < 0.04))
+        return ob, reward, done, dict(dist=self.dist, success=float(self.dist < 0.02))
 
     def viewer_setup(self):
         self.viewer.cam.trackbodyid = 0
@@ -131,51 +98,46 @@ class ManyWorldEnv(mujoco_env.MujocoEnv, base_envs.MazeCamEnv):
         self.reach_counts = 0
         if x is None:
             x = self.np_random.uniform(low=self.obj_low, high=self.obj_high, size=2 * self.n_objs)
+        vel = self.np_random.uniform(low=0, high=self.qvel_high, size=2 * self.n_objs)
         if goal is None:
             goal = self.np_random.uniform(low=self.goal_low, high=self.goal_high, size=2)
         # self.controls.sample_goal(goals)
         self.sim.data.qpos[:] = np.concatenate([x, goal])
-        self.sim.data.qvel[:] = 0  # no velocity
+        self.sim.data.qvel[:-2] = vel  # no velocity
         # self.set_state(qpos, qvel)
-        return self._get_obs()
+        qpos = self.sim.data.qpos
+        qvel = self.sim.data.qvel
+        ob = np.concatenate([qpos, qvel[:-2]])
+        return ob
 
     def _get_delta(self):
         *delta, _ = self.get_body_com("goal") - self.get_body_com("object")
         return delta
 
-    def _get_obs(self):
-        obs = {}
-        qpos = self.sim.data.qpos.flat.copy()
-        if 'x' in self.obs_keys:
-            obs['x'] = qpos[:2].copy()
-        if 'img' in self.obs_keys:
-            goal = qpos[2:].copy()
-            qpos[2:] = [.3, .3]  # move goal out of frame
-            self.set_state(qpos, self.sim.data.qvel)
-            # todo: should use render('gray') instead.
-            obs['img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...]
-            qpos[2:] = goal
-            self.set_state(qpos, self.sim.data.qvel)
-        if 'goal' in self.obs_keys:
-            obs['goal'] = qpos[2:].copy()
-        if 'goal_img' in self.obs_keys:
-            curr_qpos = qpos.copy()
-            qpos[:2] = qpos[2:].copy()
-            qpos[2:] = [.3, .3]  # move goal out of frame
-            self.set_state(qpos, self.sim.data.qvel)
-            # todo: should use render('gray') instead.
-            obs['goal_img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...]
-            self.set_state(curr_qpos, self.sim.data.qvel)
-        return obs
-
-    # def sample_task(self, index=None):
-    #     return self.controls.sample_task(index=index)
-
-    # def get_goal_index(self):
-    #     return self.controls.index
-
-    # def get_true_goal(self):
-    #     return self.controls.true_goal
+    # def _get_obs(self):
+    #     obs = {}
+    #     qpos = self.sim.data.qpos.flat.copy()
+    #     if 'x' in self.obs_keys:
+    #         obs['x'] = qpos[:2].copy()
+    #     if 'img' in self.obs_keys:
+    #         goal = qpos[2:].copy()
+    #         qpos[2:] = [.3, .3]  # move goal out of frame
+    #         self.set_state(qpos, self.sim.data.qvel)
+    #         # todo: should use render('gray') instead.
+    #         obs['img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...]
+    #         qpos[2:] = goal
+    #         self.set_state(qpos, self.sim.data.qvel)
+    #     if 'goal' in self.obs_keys:
+    #         obs['goal'] = qpos[2:].copy()
+    #     if 'goal_img' in self.obs_keys:
+    #         curr_qpos = qpos.copy()
+    #         qpos[:2] = qpos[2:].copy()
+    #         qpos[2:] = [.3, .3]  # move goal out of frame
+    #         self.set_state(qpos, self.sim.data.qvel)
+    #         # todo: should use render('gray') instead.
+    #         obs['goal_img'] = self.render('grey', width=self.width, height=self.height).transpose(0, 1)[None, ...]
+    #         self.set_state(curr_qpos, self.sim.data.qvel)
+    #     return obs
 
 
 from gym.envs import register
@@ -201,6 +163,6 @@ else:
     register(
         id="ManyWorld-v0",
         entry_point=ManyWorldEnv,
-        kwargs=dict(n_objs=1, discrete=True),
+        kwargs=dict(n_objs=1, ),
         max_episode_steps=50
     )
