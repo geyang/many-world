@@ -6,6 +6,16 @@ different colors. Only one of the objects is controllable.
 We also set the friction of the table to be small, to allow the 
 blocks to slide, sometimes indefinitely.
 
+## To Install
+
+You can install directly from pip
+
+```bash
+pip install many-world
+```
+
+
+
 ## To Dos
 
 - [x]  make the action space Box, and remove discrete option.
