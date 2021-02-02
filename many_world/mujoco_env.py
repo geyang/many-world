@@ -37,7 +37,7 @@ class MujocoEnv(gym.Env):
         self.sim = mujoco_py.MjSim(self.model)
         self.data = self.sim.data
         self.viewer = None
-        self._viewers = {}
+        self.viewers = {}
 
         self.width = width
         self.height = height
@@ -76,7 +76,7 @@ class MujocoEnv(gym.Env):
         self.sim.reset()
         ob = self.reset_model(*args, **kwargs)
         old_viewer = self.viewer
-        for v in self._viewers.values():
+        for v in self.viewers.values():
             self.viewer = v
             self.viewer_setup()
         self.viewer = old_viewer
@@ -158,9 +158,9 @@ class MujocoEnv(gym.Env):
 
     def close(self):
         self.viewer = None
-        self._viewers.clear()
+        self.viewers.clear()
 
-        for viewer in self._viewers.items():
+        for viewer in self.viewers.items():
             import glfw
             glfw.destroy_window(viewer.window)
 
@@ -170,7 +170,7 @@ class MujocoEnv(gym.Env):
     def _get_viewer(self, mode, cam_id) -> mujoco_py.MjViewer:
         mode_cam_id = mode, cam_id
 
-        self.viewer = self._viewers.get(mode_cam_id)
+        self.viewer = self.viewers.get(mode_cam_id)
         if self.viewer is not None:
             if sys.platform == 'darwin':
                 # info: to fix the black image of death.
@@ -187,7 +187,7 @@ class MujocoEnv(gym.Env):
             self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, -1)
 
         self.viewer_setup()
-        self._viewers[mode_cam_id] = self.viewer
+        self.viewers[mode_cam_id] = self.viewer
         return self.viewer
 
     def get_body_com(self, body_name):
