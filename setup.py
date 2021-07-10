@@ -6,6 +6,7 @@ with open('VERSION', 'r') as f:
 setup(name='many_world',
       packages=find_packages(),
       install_requires=["mujoco-py", "gym"],
+      package_data={'fetch': ['many_world/*.*', 'many_world/**/*.*']},
       description='Many-world Environment, for Object-centric RL',
       author='Ge Yang',
       url='',
