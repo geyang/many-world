@@ -6,7 +6,7 @@ with open('VERSION', 'r') as f:
 setup(name='many_world',
       packages=[p for p in find_packages() if p == "many_world" or "many_world." in p],
       install_requires=["mujoco-py", "gym"],
-      package_data={'many_world': ['many_world/*.*', 'many_world/**/*.*']},
+      package_data={'many_world': ['assets/**/*.*']},
       description='Many-world Environment, for Object-centric RL',
       author='Ge Yang',
       url='',

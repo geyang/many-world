@@ -13,7 +13,8 @@ wheel:
 	python setup.py bdist_wheel
 dev:
 	make wheel
-	pip install --ignore-installed dist/many_world*.whl
+	yes | pip uninstall many-world
+	pip install dist/many_world*.whl
 convert-rst:
 	pandoc -s README.md -o README --to=rst
 	sed -i '' 's/code/code-block/g' README
