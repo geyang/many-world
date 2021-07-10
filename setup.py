@@ -4,7 +4,7 @@ with open('VERSION', 'r') as f:
       version = f.read().strip()
 
 setup(name='many_world',
-      packages=find_packages(),
+      packages=[p for p in find_packages() if p == "many_world" or "many_world." in p],
       install_requires=["mujoco-py", "gym"],
       package_data={'many_world': ['many_world/*.*', 'many_world/**/*.*']},
       description='Many-world Environment, for Object-centric RL',
